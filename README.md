@@ -91,7 +91,7 @@ swift format format --in-place --recursive Sources Tests Package.swift
 ./scripts/check.sh
 ```
 
-The check script runs Swift tests with warnings treated as errors, strict swift-format and SwiftLint checks, launcher syntax validation, and OpenSpec validation. GitHub Actions runs the same script on macOS.
+The check script runs Swift tests with warnings treated as errors, strict swift-format and SwiftLint checks, launcher syntax validation, and OpenSpec validation. GitHub Actions runs the same script with Xcode 26.6 on macOS 26.
 
 `CodexStatsCore` contains the log adapters, deterministic classifier, SQLite index actor, analytics aggregation, and burst policy. `CodexStatsApp` contains the AppKit lifecycle, SwiftUI dashboard, sorting, and notification permission flow.
 
