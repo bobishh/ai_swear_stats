@@ -1,0 +1,35 @@
+included:
+  - Sources
+  - Tests
+excluded:
+  - .build
+only_rules:
+  - force_cast
+  - force_try
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - unowned_variable_capture
+  - empty_count
+  - empty_string
+  - fatal_error_message
+  - unused_optional_binding
+  - cyclomatic_complexity
+  - function_body_length
+  - type_body_length
+  - file_length
+  - large_tuple
+cyclomatic_complexity:
+  warning: 10
+  error: 15
+function_body_length:
+  warning: 80
+  error: 120
+type_body_length:
+  warning: 350
+  error: 450
+file_length:
+  warning: 500
+  error: 650
+large_tuple:
+  warning: 3
+  error: 4

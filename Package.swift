@@ -15,12 +15,15 @@ let package = Package(
         .executable(
             name: "codex_stats_app",
             targets: ["CodexStatsApp"]
-        )
+        ),
     ],
     targets: [
+        .systemLibrary(name: "CSQLite"),
         .target(
             name: "CodexStatsCore",
-            path: "Sources/CodexStatsCore"
+            dependencies: ["CSQLite"],
+            path: "Sources/CodexStatsCore",
+            resources: [.process("Resources")]
         ),
         .executableTarget(
             name: "CodexStatsApp",
@@ -36,7 +39,7 @@ let package = Package(
             name: "CodexStatsCoreTests",
             dependencies: ["CodexStatsCore"],
             path: "Tests/CodexStatsCoreTests"
-        )
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

@@ -21,17 +21,19 @@ struct CodexStatsConfigStoreTests {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         let store = CodexStatsConfigStore(applicationSupportRoot: root)
-        try FileManager.default.createDirectory(at: store.configURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: store.configURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data("{ nope".utf8).write(to: store.configURL)
 
         let loaded = store.load()
 
         #expect(loaded.config.rootPaths == CodexStatsConfig.defaultRootPaths)
-        #expect({
-            if case .fallbackDefault = loaded.source {
-                return true
-            }
-            return false
-        }())
+        #expect(
+            {
+                if case .fallbackDefault = loaded.source {
+                    return true
+                }
+                return false
+            }())
     }
 }

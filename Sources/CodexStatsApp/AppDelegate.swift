@@ -1,30 +1,61 @@
 import AppKit
-import Foundation
 import CodexStatsCore
+import Foundation
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     private let configStore = CodexStatsConfigStore()
-
-    private var statusItem: NSStatusItem?
-    private var dashboard: StatsWindowController?
-    private var scanError: String?
-    private var timer: Timer?
-    private var isScanning = false
     private var config = CodexStatsConfig()
-    private var loadSource: CodexStatsConfigStore.LoadSource = .createdDefault
-    private var snapshot = CodexStatsSnapshot.empty
+    private var index: AnalyticsIndex?
+    private var classifier: WordClassifier?
+    private var dashboard: StatsWindowController?
+    private var statusItem: NSStatusItem?
+    private var timer: Timer?
+    private var refreshTask: Task<Void, Never>?
+    private var notifications: NotificationService?
+    private var notificationSettings: NotificationSettings?
+    private var notificationTask: Task<Void, Never>?
+    private var snapshot = AnalyticsSnapshot.empty
+    private var scanError: String?
+    private var isScanning = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        loadConfig()
-        installStatusItem()
-        installApplicationMenu()
+        let loaded = configStore.load()
+        config = loaded.config
+        if case .fallbackDefault(let error) = loaded.source { scanError = "Configuration fallback: " + error }
         dashboard = StatsWindowController(
             onRefresh: { [weak self] in self?.refreshScan() },
-            onOpenConfig: { [weak self] in self?.openConfig() }
-        )
+            onOpenConfig: { [weak self] in self?.openConfig() },
+            onFilter: { [weak self] filter in self?.applyFilter(filter) },
+            onAddFolder: { [weak self] in self?.addFolder() },
+            onRemoveFolder: { [weak self] path in self?.removeFolder(path) },
+            onNotifications: { [weak self] enabled in self?.setNotifications(enabled) })
+        if let dashboard {
+            dashboard.state.notificationsEnabled = config.notificationsEnabled
+            notificationSettings = NotificationSettings(
+                state: dashboard.state,
+                authorize: { [weak self] in
+                    guard let self else { return false }
+                    let service = self.notifications ?? NotificationService()
+                    self.notifications = service
+                    return try await service.authorize()
+                },
+                save: { [weak self] enabled in
+                    guard let self else { return }
+                    var updated = self.config
+                    updated.notificationsEnabled = enabled
+                    try self.configStore.save(updated)
+                    self.config = updated
+                })
+        }
+        if config.notificationsEnabled { setNotifications(true) }
+        installMenus()
         showDashboard()
-        refreshScan()
+        updateDashboard()
+        initializeIndex()
+        timer = Timer.scheduledTimer(
+            timeInterval: max(5, config.intervalSeconds), target: self,
+            selector: #selector(refreshScan), userInfo: nil, repeats: true)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -32,18 +63,143 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return true
     }
 
-    private func installApplicationMenu() {
-        let mainMenu = NSMenu()
-        let appItem = NSMenuItem()
-        let appMenu = NSMenu()
-        let showItem = NSMenuItem(title: "Show Codex Stats", action: #selector(showDashboard), keyEquivalent: "0")
-        showItem.target = self
-        appMenu.addItem(showItem)
-        appMenu.addItem(.separator())
-        appMenu.addItem(NSMenuItem(title: "Quit Codex Stats", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        appItem.submenu = appMenu
-        mainMenu.addItem(appItem)
-        NSApp.mainMenu = mainMenu
+    func applicationWillTerminate(_ notification: Notification) {
+        timer?.invalidate()
+        refreshTask?.cancel()
+        notificationTask?.cancel()
+    }
+
+    private func initializeIndex() {
+        refreshTask = Task {
+            do {
+                let classifier = try WordClassifier()
+                self.classifier = classifier
+                let databaseURL = configStore.configURL.deletingLastPathComponent().appendingPathComponent(
+                    "analytics.sqlite")
+                let index = try AnalyticsIndex(databaseURL: databaseURL, classifier: classifier)
+                self.index = index
+                snapshot = try await index.snapshot(roots: config.resolvedRootURLs())
+                updateDashboard()
+                refreshScan()
+            } catch { showError(error) }
+        }
+    }
+
+    @objc private func refreshScan() {
+        guard !isScanning, let index else { return }
+        isScanning = true
+        scanError = nil
+        dashboard?.state.files = 0
+        dashboard?.state.totalFiles = 0
+        updateDashboard()
+        let roots = config.resolvedRootURLs()
+        refreshTask = Task {
+            defer { isScanning = false; updateDashboard() }
+            do {
+                let result = try await index.refresh(roots: roots) { [weak self] progress in
+                    guard progress.files.isMultiple(of: 10) || progress.files == progress.total else { return }
+                    Task { @MainActor in
+                        self?.dashboard?.state.files = progress.files
+                        self?.dashboard?.state.totalFiles = progress.total
+                        self?.dashboard?.state.bytesRead = progress.bytesRead
+                        if let partial = progress.snapshot, let self {
+                            self.snapshot = partial
+                            self.updateDashboard()
+                        }
+                    }
+                }
+                snapshot =
+                    roots == config.resolvedRootURLs()
+                    ? result.snapshot : try await index.snapshot(roots: config.resolvedRootURLs())
+                dashboard?.state.bytesRead = result.bytesRead
+                if dashboard?.state.filter != AnalyticsFilter() { await refreshFilteredSnapshot() }
+                try await evaluateNotifications(result.liveMessages, index: index)
+            } catch is CancellationError { return } catch { showError(error) }
+        }
+    }
+
+    private func applyFilter(_ filter: AnalyticsFilter) {
+        Task { await refreshFilteredSnapshot() }
+    }
+
+    private func refreshFilteredSnapshot() async {
+        guard let index, let dashboard else { return }
+        let filter = dashboard.state.filter
+        do {
+            let filtered = try await index.snapshot(filter: filter, roots: config.resolvedRootURLs())
+            var navigationFilter = filter
+            navigationFilter.thread = nil
+            let navigation =
+                filter.thread == nil
+                ? filtered
+                : try await index.snapshot(filter: navigationFilter, roots: config.resolvedRootURLs())
+            guard dashboard.state.filter == filter else { return }
+            updateDashboard(filtered: filtered)
+            dashboard.state.threads = navigation.threads
+        } catch { showError(error) }
+    }
+
+    private func updateDashboard(filtered: AnalyticsSnapshot? = nil) {
+        guard let dashboard else { return }
+        let displayed = filtered ?? (dashboard.state.filter == AnalyticsFilter() ? snapshot : dashboard.state.snapshot)
+        dashboard.update(snapshot: displayed, isScanning: isScanning, error: scanError, roots: config.rootPaths)
+        dashboard.state.models = snapshot.models
+        if dashboard.state.filter.model == nil, dashboard.state.filter.since == nil {
+            dashboard.state.threads = snapshot.threads
+        }
+        statusItem?.button?.image = NSImage(
+            systemSymbolName: isScanning ? "arrow.clockwise" : "waveform.path", accessibilityDescription: "Swear Stats")
+        statusItem?.button?.image?.isTemplate = true
+    }
+
+    private func addFolder() {
+        let picker = NSOpenPanel()
+        picker.title = "Attach a log folder"
+        picker.prompt = "Attach"
+        picker.canChooseFiles = false
+        picker.canChooseDirectories = true
+        picker.allowsMultipleSelection = true
+        guard picker.runModal() == .OK else { return }
+        let existing = Set(config.resolvedRootURLs())
+        config.rootPaths += picker.urls.filter { !existing.contains($0.standardizedFileURL.resolvingSymlinksInPath()) }
+            .map(\.path)
+        persistFolders()
+    }
+
+    private func removeFolder(_ path: String) {
+        config.rootPaths.removeAll { $0 == path }
+        dashboard?.state.filter = AnalyticsFilter()
+        persistFolders()
+    }
+
+    private func persistFolders() {
+        do { try configStore.save(config); updateDashboard(); refreshScan() } catch { showError(error) }
+    }
+
+    private func setNotifications(_ enabled: Bool) {
+        guard let notificationSettings, dashboard?.state.notificationRequestPending != true else { return }
+        notificationTask = Task { await notificationSettings.setEnabled(enabled) }
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        if dashboard?.state.notificationNeedsSettings == true { setNotifications(true) }
+    }
+
+    private func evaluateNotifications(_ messages: [MessageFact], index: AnalyticsIndex) async throws {
+        guard config.notificationsEnabled, let classifier else { return }
+        var policy = try await index.loadBurstState()
+        let reminder = try policy.evaluate(messages, classifier: classifier)
+        try await index.saveBurstState(policy)
+        if let reminder {
+            let service = notifications ?? NotificationService()
+            notifications = service
+            try await service.send(reminder)
+        }
+    }
+
+    private func showError(_ error: Error) {
+        scanError = error.localizedDescription
+        updateDashboard()
     }
 
     @objc private func showDashboard() {
@@ -53,235 +209,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func updateDashboard() {
-        var error = scanError
-        if case .fallbackDefault(let reason) = loadSource {
-            error = [error, "Config fallback: \(reason)"].compactMap { $0 }.joined(separator: "\n")
-        }
-        dashboard?.update(snapshot: snapshot, isScanning: isScanning, error: error, roots: config.rootPaths)
-    }
+    @objc private func openConfig() { NSWorkspace.shared.open(configStore.configURL) }
 
-    func applicationWillTerminate(_ notification: Notification) {
-        timer?.invalidate()
-    }
-
-    private func loadConfig() {
-        let loaded = configStore.load()
-        config = loaded.config
-        loadSource = loaded.source
-        scheduleTimer()
-    }
-
-    private func scheduleTimer() {
-        timer?.invalidate()
-
-        let interval = max(config.intervalSeconds, 30)
-        timer = Timer.scheduledTimer(
-            timeInterval: interval,
-            target: self,
-            selector: #selector(refreshScan),
-            userInfo: nil,
-            repeats: true
-        )
-    }
-
-    private func installStatusItem() {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.menu = NSMenu()
-        item.menu?.delegate = self
-        statusItem = item
-        updateStatusIcon()
-    }
-
-    func menuWillOpen(_ menu: NSMenu) {
-        rebuildMenu()
-    }
-
-    @objc
-    private func refreshScan() {
-        guard isScanning == false else {
-            return
-        }
-
-        isScanning = true
-        scanError = nil
-        dashboard?.state.scannedFiles = 0
-        dashboard?.state.scannedMessages = 0
-        updateStatusIcon()
-        updateDashboard()
-
-        let currentConfig = config
-        Task.detached(priority: .utility) {
-            let result: Result<CodexStatsSnapshot, Error>
-            do {
-                let snapshot = try CodexStatsScanner().scan(config: currentConfig) { files, messages in
-                    Task { @MainActor in
-                        self.dashboard?.state.scannedFiles = files
-                        self.dashboard?.state.scannedMessages = messages
-                    }
-                }
-                result = .success(snapshot)
-            } catch {
-                result = .failure(error)
-            }
-
-            await MainActor.run {
-                self.finishScan(result)
-            }
-        }
-    }
-
-    private func finishScan(_ result: Result<CodexStatsSnapshot, Error>) {
-        isScanning = false
-
-        switch result {
-        case .success(let snapshot):
-            self.snapshot = snapshot
-        case .failure(let error):
-            scanError = error.localizedDescription
-        }
-
-        updateStatusIcon()
-        rebuildMenu()
-        updateDashboard()
-    }
-
-    private func updateStatusIcon() {
-        guard let button = statusItem?.button else {
-            return
-        }
-
-        button.title = ""
-        button.imagePosition = .imageOnly
-
-        let imageName: String
-        let tooltip: String
-
-        if isScanning {
-            imageName = "arrow.clockwise"
-            tooltip = "Codex Stats: scanning"
-        } else if case .fallbackDefault(let error) = loadSource {
-            imageName = "exclamationmark.triangle.fill"
-            tooltip = "Codex Stats: config fallback (\(error))"
-        } else {
-            imageName = "chart.bar.doc.horizontal"
-            tooltip = "Codex Stats"
-        }
-
-        button.image = NSImage(systemSymbolName: imageName, accessibilityDescription: tooltip)
-        button.image?.isTemplate = true
-        button.toolTip = tooltip
-    }
-
-    private func rebuildMenu() {
-        guard let menu = statusItem?.menu else {
-            return
-        }
-
-        menu.removeAllItems()
-        let showItem = NSMenuItem(title: "Show Codex Stats", action: #selector(showDashboard), keyEquivalent: "")
-        showItem.target = self
-        menu.addItem(showItem)
+    private func installMenus() {
+        let menu = NSMenu()
+        let show = NSMenuItem(title: "Show Swear Stats", action: #selector(showDashboard), keyEquivalent: "0")
+        show.target = self
+        menu.addItem(show)
+        let settings = NSMenuItem(title: "Configuration…", action: #selector(openConfig), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
         menu.addItem(.separator())
-        menu.addItem(infoItem(title: "Codex Stats"))
-        menu.addItem(infoItem(title: summaryLine()))
-
-        if case .fallbackDefault(let error) = loadSource {
-            menu.addItem(infoItem(title: "Config fallback: \(error)"))
-        }
-
-        menu.addItem(infoItem(title: "Roots: \(config.rootPaths.joined(separator: ", "))"))
-        menu.addItem(infoItem(title: "Interval: \(Int(config.intervalSeconds))s"))
-
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(infoItem(title: "Files: \(snapshot.scannedFiles)"))
-        menu.addItem(infoItem(title: "User messages: \(snapshot.userMessages)"))
-        menu.addItem(infoItem(title: "Profanity hits: \(snapshot.profanityHits)"))
-        menu.addItem(infoItem(title: "Exact total: \(snapshot.exactMatchTotal)"))
-
-        if snapshot.exactMatchCounts.isEmpty == false {
-            menu.addItem(NSMenuItem.separator())
-            menu.addItem(infoItem(title: "Exact filters"))
-            for token in config.exactMatchTokens {
-                let count = snapshot.exactMatchCounts[token.lowercased(), default: 0]
-                menu.addItem(infoItem(title: "  \(token) — \(count)"))
-            }
-        }
-
-        if snapshot.topTokens.isEmpty == false {
-            menu.addItem(NSMenuItem.separator())
-            menu.addItem(infoItem(title: "Top profanity"))
-            for entry in snapshot.topTokens {
-                menu.addItem(infoItem(title: "  \(entry.token) — \(entry.count)"))
-            }
-        }
-
-        menu.addItem(NSMenuItem.separator())
-
-        let refreshItem = NSMenuItem(title: isScanning ? "Scanning..." : "Rescan Now", action: #selector(refreshScan), keyEquivalent: "")
-        refreshItem.target = self
-        refreshItem.isEnabled = isScanning == false
-        menu.addItem(refreshItem)
-
-        let reloadItem = NSMenuItem(title: "Reload Config", action: #selector(reloadConfig), keyEquivalent: "")
-        reloadItem.target = self
-        menu.addItem(reloadItem)
-
-        let openConfigItem = NSMenuItem(title: "Open Config", action: #selector(openConfig), keyEquivalent: "")
-        openConfigItem.target = self
-        menu.addItem(openConfigItem)
-
-        menu.addItem(NSMenuItem.separator())
-        let quitItem = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "")
-        quitItem.target = self
-        menu.addItem(quitItem)
-    }
-
-    private func summaryLine() -> String {
-        let scanAge = snapshot.finishedAt == .distantPast ? "never" : DateFormatter.codexStats.relativeString(for: snapshot.finishedAt)
-        return "Last scan: \(scanAge)"
-    }
-
-    private func infoItem(title: String) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        item.isEnabled = false
-        return item
-    }
-
-    @objc
-    private func reloadConfig() {
-        loadConfig()
-        refreshScan()
-    }
-
-    @objc
-    private func openConfig() {
-        _ = NSWorkspace.shared.open(configStore.configURL)
-    }
-
-    @objc
-    private func quit() {
-        NSApp.terminate(nil)
-    }
-}
-
-private extension DateFormatter {
-    static let codexStats: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        return formatter
-    }()
-
-    func relativeString(for date: Date) -> String {
-        let delta = Int(Date().timeIntervalSince(date))
-        if delta < 60 {
-            return "\(delta)s ago"
-        }
-        if delta < 3600 {
-            return "\(delta / 60)m ago"
-        }
-        return Self.codexStats.string(from: date)
+        menu.addItem(
+            NSMenuItem(title: "Quit Swear Stats", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        let main = NSMenu()
+        let item = NSMenuItem()
+        item.submenu = menu
+        main.addItem(item)
+        NSApp.mainMenu = main
+        let status = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        status.menu = menu.copy() as? NSMenu
+        status.button?.toolTip = "Swear Stats"
+        statusItem = status
     }
 }

@@ -6,3 +6,8 @@ DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+# Local OpenSpec execution checklist; product specifications remain versioned.
+/openspec/changes/*/tasks.md

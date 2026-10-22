@@ -16,10 +16,12 @@ public final class CodexStatsConfigStore {
     private let fileManager: FileManager
 
     public init(
-        applicationSupportRoot: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        applicationSupportRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
+            "Library/Application Support")
     ) {
         fileManager = .default
-        configURL = applicationSupportRoot
+        configURL =
+            applicationSupportRoot
             .appendingPathComponent("codex_stats", isDirectory: true)
             .appendingPathComponent("config.json")
     }
