@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import CodexStatsCore
 
@@ -30,5 +31,128 @@ struct WordClassifierTests {
         for word in ["долбить", "долбеж", "долбежка"] {
             #expect(classifier.classify(word) == nil, "False positive: \(word)")
         }
+    }
+
+    @Test(
+        "Given curated terms in every advertised language, when classified, then profanity is recognized without substring or neutral-word matches"
+    )
+    func multilingualPacks() throws {
+        let classifier = try WordClassifier()
+        let positiveCases: [(String, LexicalCategory)] = [
+            ("блять", .profanity), ("fuck", .profanity),
+            ("Scheiße", .profanity), ("mierda", .profanity), ("merde", .profanity),
+            ("cazzo", .profanity), ("porra", .profanity), ("kut", .profanity), ("kurwa", .profanity),
+        ]
+        for (word, category) in positiveCases {
+            #expect(classifier.classify(word)?.category == category, "Missing multilingual term: \(word)")
+        }
+        #expect(classifier.classify("SCHEISSE", language: "de")?.language == "de")
+        #expect(classifier.classify("merde", language: "de") == nil)
+        #expect(classifier.classify("connard", language: "fr")?.category == .insult)
+        #expect(classifier.classify("kacke", language: "de")?.category == .vulgarity)
+        #expect(classifier.classify("puta", language: "es")?.category == .profanity)
+        #expect(classifier.classify("MERDES", language: "fr")?.family == "merde")
+        #expect(classifier.classify("VOLLpfosten", language: "de")?.category == .insult)
+        #expect(classifier.classify("cabrón", language: "es")?.category == .insult)
+        #expect(classifier.classify("caca", language: "es")?.category == .vulgarity)
+        #expect(classifier.classify("coglione", language: "it")?.category == .insult)
+        #expect(classifier.classify("piscio", language: "it")?.category == .vulgarity)
+        #expect(classifier.classify("vadia", language: "pt")?.category == .insult)
+        #expect(classifier.classify("bosta", language: "pt")?.category == .vulgarity)
+        #expect(classifier.classify("hufter", language: "nl")?.category == .insult)
+        #expect(classifier.classify("schijt", language: "nl")?.category == .vulgarity)
+        #expect(classifier.classify("skurwysyn", language: "pl")?.category == .insult)
+        #expect(classifier.classify("gówno", language: "pl")?.category == .vulgarity)
+        for word in [
+            "gay", "vagina", "penis", "vulva", "asphalt", "classic", "assistant", "Scunthorpe",
+            "schiesser", "scopare", "eikel", "corno", "troia", "culo", "foda-se",
+        ] {
+            #expect(classifier.classify(word) == nil, "False positive: \(word)")
+        }
+        #expect(classifier.supportedLanguages == ["en", "ru", "de", "es", "fr", "it", "pt", "nl", "pl"])
+        #expect(classifier.packEntryCounts == ["de": 27, "es": 19, "fr": 29, "it": 24, "pt": 20, "nl": 24, "pl": 35])
+        #expect(
+            classifier.sourceCandidateCounts == ["de": 23, "es": 13, "fr": 21, "it": 22, "pt": 12, "nl": 24, "pl": 18])
+        #expect(classifier.sourceRevision == "5faf2ba42d7b1c0977169ec3611df25a3c08eb13")
+        #expect(classifier.sourceLicense == "CC-BY-4.0")
+        #expect(classifier.classify("puta") == nil, "Cross-language category conflict must stay unresolved")
+        #expect(classifier.classify("puta", language: "es")?.category == .profanity)
+        #expect(classifier.classify("puta", language: "pt")?.category == .insult)
+
+        let overriding = try WordClassifier(extraWords: ["mierda": "fuck"])
+        #expect(overriding.classify("mierda")?.family == "fuck")
+        #expect(overriding.classify("mierda", language: "es")?.family == "fuck")
+    }
+
+    @Test(
+        "Given bundled language packs, when validating their manifest, then source forms, normalized keys, and exclusions agree"
+    )
+    func packIntegrity() throws {
+        let url = try #require(ResourceBundle.bundle.url(forResource: "lexicon", withExtension: "json"))
+        let lexicon = try JSONDecoder().decode(TestLexicon.self, from: Data(contentsOf: url))
+        #expect(lexicon.version == 3)
+        #expect(lexicon.sources.count == 1)
+        #expect(lexicon.sources.first?.id == "LDNOOBW")
+        #expect(
+            lexicon.sources.first?.url
+                == "https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words")
+        #expect(lexicon.sources.first?.license == "CC-BY-4.0")
+        #expect(lexicon.sources.first?.revision == "5faf2ba42d7b1c0977169ec3611df25a3c08eb13")
+
+        let exclusions = Set(lexicon.exceptions.map(normalize))
+        #expect(Set(lexicon.packs.map(\.language)).count == lexicon.packs.count)
+        for pack in lexicon.packs {
+            var seen = Set<String>()
+            for entry in pack.entries {
+                let forms = entry.forms.map(normalize)
+                let sourceForms = entry.sourceForms.map(normalize)
+                #expect(!forms.isEmpty)
+                #expect(Set(forms).count == forms.count, "Duplicate normalized forms in \(pack.language)")
+                #expect(Set(sourceForms).count == sourceForms.count, "Duplicate source forms in \(pack.language)")
+                #expect(sourceForms.allSatisfy(Set(forms).contains), "Source form missing from accepted forms")
+                #expect(forms.allSatisfy({ !$0.isEmpty && !$0.contains(where: \.isWhitespace) }))
+                #expect(forms.allSatisfy({ !exclusions.contains($0) }), "Excluded form in \(pack.language)")
+                for form in forms {
+                    #expect(seen.insert(form).inserted, "Duplicate pack key \(form) in \(pack.language)")
+                }
+            }
+        }
+    }
+
+    @Test("Given a WordMatch serialized before language metadata, when decoded, then it remains compatible")
+    func oldMatchCodingCompatibility() throws {
+        let data = Data(#"{"word":"fuck","family":"fuck","category":"profanity","method":"dictionary"}"#.utf8)
+        let match = try JSONDecoder().decode(WordMatch.self, from: data)
+        #expect(match.language == nil)
+    }
+
+    private func normalize(_ word: String) -> String {
+        word.precomposedStringWithCanonicalMapping.lowercased().replacingOccurrences(of: "ё", with: "е")
+    }
+}
+
+private struct TestLexicon: Decodable {
+    let version: Int
+    let exceptions: [String]
+    let sources: [Source]
+    let packs: [Pack]
+
+    struct Source: Decodable {
+        let id: String
+        let url: String
+        let revision: String
+        let license: String
+    }
+
+    struct Pack: Decodable {
+        let language: String
+        let entries: [Entry]
+    }
+
+    struct Entry: Decodable {
+        let family: String
+        let category: LexicalCategory
+        let forms: [String]
+        let sourceForms: [String]
     }
 }

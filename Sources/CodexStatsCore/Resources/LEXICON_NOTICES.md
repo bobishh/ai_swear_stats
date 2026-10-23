@@ -1,0 +1,3 @@
+The German, Spanish, French, Italian, Portuguese, Dutch, and Polish packs in lexicon.json contain 133 curated candidate terms from LDNOOBW: List of Dirty, Naughty, Obscene, and Otherwise Bad Words, copyright © 2012–2020 Shutterstock, Inc. Source: https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/tree/5faf2ba42d7b1c0977169ec3611df25a3c08eb13
+
+The source is licensed under Creative Commons Attribution 4.0 International: https://creativecommons.org/licenses/by/4.0/. A copy of the license is included as LDNOOBW-LICENSE.txt. Project changes include candidate selection, exclusions, spelling normalization, 45 explicit added forms, and project-authored family/category annotations. These annotations are not supplied by LDNOOBW.

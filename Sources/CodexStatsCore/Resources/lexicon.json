@@ -1,24 +1,1521 @@
 {
-  "version": 2,
+  "version": 3,
   "families": [
-    {"family":"блядь","category":"profanity","stems":["бляд"],"prefixes":[""],"endings":["ь","и","ью","ей","ям","ями","ях","ский","ская","ские","ство"]},
-    {"family":"блядь","category":"profanity","stems":["блят"],"prefixes":[""],"endings":["ь","ский","ская","ские","ство"]},
-    {"family":"ебать","category":"profanity","stems":["еб"],"prefixes":["","за","вы","до","на","от","об","раз","под","пере","про","у","съ","въ","отъ","объ","разъ","подъ"],"endings":["ать","ал","ала","ало","али","аный","аная","аное","аные","аного","аному","анных","анный","анная","анное","анные","анутый","анулся","анулись","атьcя","аться","ался","алась","ались","ись","итесь","ет","ешь","ем","ете","ут","у","и","ите","ля","лей","нул","нула","нули","нуть","ни","нуло"]},
-    {"family":"ебать","category":"profanity","stems":["долбоеб"],"prefixes":[""],"endings":["","а","у","ом","е","ы","ов","ам","ами","ах"]},
-    {"family":"хуй","category":"profanity","stems":["хуй"],"prefixes":["","на","по","не","до","за","от","о","при"],"endings":["","ня","ню","ни","ней","не","ный","ная","ное","ные","ного","ному","ными","ных","нейший"]},
-    {"family":"хуй","category":"profanity","stems":["ху"],"prefixes":["","на","по","не","до","за","от","о","при"],"endings":["я","ю","ем","и","ев","ями","ях","евый","евая","евые","евого","евым","евыми","йло"]},
-    {"family":"пизда","category":"profanity","stems":["пизд"],"prefixes":["","за","вы","до","на","от","раз","под","пере","про","у"],"endings":["а","ы","е","у","ой","ою","ец","еж","еть","ить","ит","ят","ил","ила","или","ецкий","ецкая","ецкие","юк","юки","юков","уй","уйте","овать","овали","ануть","анул"]},
-    {"family":"мудак","category":"insult","stems":["мудак","мудач"],"prefixes":[""],"endings":["","а","у","ом","и","ов","ами","ье","ий","ка","ки"]},
-    {"family":"пидор","category":"insult","stems":["пидор","пидорас"],"prefixes":[""],"endings":["","а","у","ом","ы","ов","ами","ский","ская","ские"]},
-    {"family":"сука","category":"insult","stems":["сук"],"prefixes":[""],"endings":["а","и","у","ой","ою","ам","ами","ах"]},
-    {"family":"говно","category":"vulgarity","stems":["говн"],"prefixes":[""],"endings":["о","а","у","ом","е","ы","ами","ах","ище","ищею","яный"]},
-    {"family":"дерьмо","category":"vulgarity","stems":["дерьм"],"prefixes":[""],"endings":["о","а","у","ом","е","овый","овая","овые","ового"]},
-    {"family":"fuck","category":"profanity","stems":["fuck","motherfuck"],"prefixes":[""],"endings":["","s","ed","ing","er","ers","ery","up","ups"]},
-    {"family":"shit","category":"profanity","stems":["shit","bullshit"],"prefixes":[""],"endings":["","s","ty","tier","tiest","ting","ted","head","heads"]},
-    {"family":"bitch","category":"insult","stems":["bitch"],"prefixes":[""],"endings":["","es","y","ing","ed"]},
-    {"family":"asshole","category":"insult","stems":["asshole","arsehole","bastard"],"prefixes":[""],"endings":["","s"]}
+    {
+      "family": "блядь",
+      "category": "profanity",
+      "stems": [
+        "бляд"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "ь",
+        "и",
+        "ью",
+        "ей",
+        "ям",
+        "ями",
+        "ях",
+        "ский",
+        "ская",
+        "ские",
+        "ство"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "блядь",
+      "category": "profanity",
+      "stems": [
+        "блят"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "ь",
+        "ский",
+        "ская",
+        "ские",
+        "ство"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "ебать",
+      "category": "profanity",
+      "stems": [
+        "еб"
+      ],
+      "prefixes": [
+        "",
+        "за",
+        "вы",
+        "до",
+        "на",
+        "от",
+        "об",
+        "раз",
+        "под",
+        "пере",
+        "про",
+        "у",
+        "съ",
+        "въ",
+        "отъ",
+        "объ",
+        "разъ",
+        "подъ"
+      ],
+      "endings": [
+        "ать",
+        "ал",
+        "ала",
+        "ало",
+        "али",
+        "аный",
+        "аная",
+        "аное",
+        "аные",
+        "аного",
+        "аному",
+        "анных",
+        "анный",
+        "анная",
+        "анное",
+        "анные",
+        "анутый",
+        "анулся",
+        "анулись",
+        "атьcя",
+        "аться",
+        "ался",
+        "алась",
+        "ались",
+        "ись",
+        "итесь",
+        "ет",
+        "ешь",
+        "ем",
+        "ете",
+        "ут",
+        "у",
+        "и",
+        "ите",
+        "ля",
+        "лей",
+        "нул",
+        "нула",
+        "нули",
+        "нуть",
+        "ни",
+        "нуло"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "ебать",
+      "category": "profanity",
+      "stems": [
+        "долбоеб"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "",
+        "а",
+        "у",
+        "ом",
+        "е",
+        "ы",
+        "ов",
+        "ам",
+        "ами",
+        "ах"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "хуй",
+      "category": "profanity",
+      "stems": [
+        "хуй"
+      ],
+      "prefixes": [
+        "",
+        "на",
+        "по",
+        "не",
+        "до",
+        "за",
+        "от",
+        "о",
+        "при"
+      ],
+      "endings": [
+        "",
+        "ня",
+        "ню",
+        "ни",
+        "ней",
+        "не",
+        "ный",
+        "ная",
+        "ное",
+        "ные",
+        "ного",
+        "ному",
+        "ными",
+        "ных",
+        "нейший"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "хуй",
+      "category": "profanity",
+      "stems": [
+        "ху"
+      ],
+      "prefixes": [
+        "",
+        "на",
+        "по",
+        "не",
+        "до",
+        "за",
+        "от",
+        "о",
+        "при"
+      ],
+      "endings": [
+        "я",
+        "ю",
+        "ем",
+        "и",
+        "ев",
+        "ями",
+        "ях",
+        "евый",
+        "евая",
+        "евые",
+        "евого",
+        "евым",
+        "евыми",
+        "йло"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "пизда",
+      "category": "profanity",
+      "stems": [
+        "пизд"
+      ],
+      "prefixes": [
+        "",
+        "за",
+        "вы",
+        "до",
+        "на",
+        "от",
+        "раз",
+        "под",
+        "пере",
+        "про",
+        "у"
+      ],
+      "endings": [
+        "а",
+        "ы",
+        "е",
+        "у",
+        "ой",
+        "ою",
+        "ец",
+        "еж",
+        "еть",
+        "ить",
+        "ит",
+        "ят",
+        "ил",
+        "ила",
+        "или",
+        "ецкий",
+        "ецкая",
+        "ецкие",
+        "юк",
+        "юки",
+        "юков",
+        "уй",
+        "уйте",
+        "овать",
+        "овали",
+        "ануть",
+        "анул"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "мудак",
+      "category": "insult",
+      "stems": [
+        "мудак",
+        "мудач"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "",
+        "а",
+        "у",
+        "ом",
+        "и",
+        "ов",
+        "ами",
+        "ье",
+        "ий",
+        "ка",
+        "ки"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "пидор",
+      "category": "insult",
+      "stems": [
+        "пидор",
+        "пидорас"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "",
+        "а",
+        "у",
+        "ом",
+        "ы",
+        "ов",
+        "ами",
+        "ский",
+        "ская",
+        "ские"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "сука",
+      "category": "insult",
+      "stems": [
+        "сук"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "а",
+        "и",
+        "у",
+        "ой",
+        "ою",
+        "ам",
+        "ами",
+        "ах"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "говно",
+      "category": "vulgarity",
+      "stems": [
+        "говн"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "о",
+        "а",
+        "у",
+        "ом",
+        "е",
+        "ы",
+        "ами",
+        "ах",
+        "ище",
+        "ищею",
+        "яный"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "дерьмо",
+      "category": "vulgarity",
+      "stems": [
+        "дерьм"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "о",
+        "а",
+        "у",
+        "ом",
+        "е",
+        "овый",
+        "овая",
+        "овые",
+        "ового"
+      ],
+      "language": "ru"
+    },
+    {
+      "family": "fuck",
+      "category": "profanity",
+      "stems": [
+        "fuck",
+        "motherfuck"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "",
+        "s",
+        "ed",
+        "ing",
+        "er",
+        "ers",
+        "ery",
+        "up",
+        "ups"
+      ],
+      "language": "en"
+    },
+    {
+      "family": "shit",
+      "category": "profanity",
+      "stems": [
+        "shit",
+        "bullshit"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "",
+        "s",
+        "ty",
+        "tier",
+        "tiest",
+        "ting",
+        "ted",
+        "head",
+        "heads"
+      ],
+      "language": "en"
+    },
+    {
+      "family": "bitch",
+      "category": "insult",
+      "stems": [
+        "bitch"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "",
+        "es",
+        "y",
+        "ing",
+        "ed"
+      ],
+      "language": "en"
+    },
+    {
+      "family": "asshole",
+      "category": "insult",
+      "stems": [
+        "asshole",
+        "arsehole",
+        "bastard"
+      ],
+      "prefixes": [
+        ""
+      ],
+      "endings": [
+        "",
+        "s"
+      ],
+      "language": "en"
+    }
   ],
-  "words": {"бля":"блядь","ебанутый":"ебать","ебанутые":"ебать","еблан":"ебать","заебись":"ебать","ебись":"ебать","хер":"хуй","хера":"хуй","хером":"хуй","херня":"хуй","пизде":"пизда","cunt":"fuck","cunts":"fuck"},
-  "masked": {"бл*ть":"блядь","бл**ь":"блядь","бл@ть":"блядь","f*ck":"fuck","f**k":"fuck","sh*t":"shit","п*здец":"пизда"},
-  "exceptions": ["страхуй","подстрахуй","рубля","рубли","страхуя","страхуем","сукно","сукна","scunthorpe","assistant","assignment","class","classic","cocktail","dickens"]
+  "words": {
+    "бля": "блядь",
+    "ебанутый": "ебать",
+    "ебанутые": "ебать",
+    "еблан": "ебать",
+    "заебись": "ебать",
+    "ебись": "ебать",
+    "хер": "хуй",
+    "хера": "хуй",
+    "хером": "хуй",
+    "херня": "хуй",
+    "пизде": "пизда",
+    "cunt": "fuck",
+    "cunts": "fuck"
+  },
+  "masked": {
+    "бл*ть": "блядь",
+    "бл**ь": "блядь",
+    "бл@ть": "блядь",
+    "f*ck": "fuck",
+    "f**k": "fuck",
+    "sh*t": "shit",
+    "п*здец": "пизда"
+  },
+  "exceptions": [
+    "страхуй",
+    "подстрахуй",
+    "рубля",
+    "рубли",
+    "страхуя",
+    "страхуем",
+    "сукно",
+    "сукна",
+    "scunthorpe",
+    "assistant",
+    "assignment",
+    "class",
+    "classic",
+    "cocktail",
+    "dickens",
+    "gay",
+    "vagina",
+    "penis",
+    "vulva",
+    "clitoris",
+    "lesbian",
+    "lesbiana",
+    "transgender"
+  ],
+  "packs": [
+    {
+      "language": "de",
+      "entries": [
+        {
+          "family": "arsch",
+          "category": "profanity",
+          "forms": [
+            "arsch",
+            "arschloch",
+            "arschficker",
+            "arschlecker"
+          ],
+          "sourceForms": [
+            "arsch",
+            "arschloch",
+            "arschficker",
+            "arschlecker"
+          ]
+        },
+        {
+          "family": "fick",
+          "category": "profanity",
+          "forms": [
+            "fick",
+            "ficken",
+            "ficker",
+            "gefickt",
+            "fickst"
+          ],
+          "sourceForms": [
+            "fick",
+            "ficken"
+          ]
+        },
+        {
+          "family": "scheiße",
+          "category": "profanity",
+          "forms": [
+            "scheiße",
+            "scheisse",
+            "scheisser"
+          ],
+          "sourceForms": [
+            "scheiße",
+            "scheisser"
+          ]
+        },
+        {
+          "family": "wichs",
+          "category": "profanity",
+          "forms": [
+            "wichse",
+            "wichsen",
+            "wichser"
+          ],
+          "sourceForms": [
+            "wichse",
+            "wichsen",
+            "wichser"
+          ]
+        },
+        {
+          "family": "kacke",
+          "category": "vulgarity",
+          "forms": [
+            "kacke",
+            "kacken",
+            "kackwurst"
+          ],
+          "sourceForms": [
+            "kacke",
+            "kacken",
+            "kackwurst"
+          ]
+        },
+        {
+          "family": "pissen",
+          "category": "vulgarity",
+          "forms": [
+            "pissen",
+            "pisser"
+          ],
+          "sourceForms": [
+            "pissen",
+            "pisser"
+          ]
+        },
+        {
+          "family": "fotze",
+          "category": "insult",
+          "forms": [
+            "fotze"
+          ],
+          "sourceForms": [
+            "fotze"
+          ]
+        },
+        {
+          "family": "hure",
+          "category": "insult",
+          "forms": [
+            "hure",
+            "hurensohn"
+          ],
+          "sourceForms": [
+            "hure",
+            "hurensohn"
+          ]
+        },
+        {
+          "family": "nutte",
+          "category": "insult",
+          "forms": [
+            "nutte"
+          ],
+          "sourceForms": [
+            "nutte"
+          ]
+        },
+        {
+          "family": "schlampe",
+          "category": "insult",
+          "forms": [
+            "schlampe"
+          ],
+          "sourceForms": [
+            "schlampe"
+          ]
+        },
+        {
+          "family": "vollpfosten",
+          "category": "insult",
+          "forms": [
+            "vollpfosten"
+          ],
+          "sourceForms": [
+            "vollpfosten"
+          ]
+        },
+        {
+          "family": "bumse",
+          "category": "profanity",
+          "forms": [
+            "bumsen"
+          ],
+          "sourceForms": [
+            "bumsen"
+          ]
+        }
+      ]
+    },
+    {
+      "language": "es",
+      "entries": [
+        {
+          "family": "mierda",
+          "category": "profanity",
+          "forms": [
+            "mierda",
+            "mierdas"
+          ],
+          "sourceForms": [
+            "mierda"
+          ]
+        },
+        {
+          "family": "puta",
+          "category": "profanity",
+          "forms": [
+            "puta",
+            "putas"
+          ],
+          "sourceForms": [
+            "puta"
+          ]
+        },
+        {
+          "family": "follar",
+          "category": "profanity",
+          "forms": [
+            "follar",
+            "follador"
+          ],
+          "sourceForms": [
+            "follar",
+            "follador"
+          ]
+        },
+        {
+          "family": "coño",
+          "category": "profanity",
+          "forms": [
+            "coño",
+            "coños"
+          ],
+          "sourceForms": [
+            "coño"
+          ]
+        },
+        {
+          "family": "cabrón",
+          "category": "insult",
+          "forms": [
+            "cabrón",
+            "cabron",
+            "cabrones"
+          ],
+          "sourceForms": [
+            "cabrón"
+          ]
+        },
+        {
+          "family": "gilipollas",
+          "category": "insult",
+          "forms": [
+            "gilipollas",
+            "jilipollas"
+          ],
+          "sourceForms": [
+            "gilipollas",
+            "jilipollas"
+          ]
+        },
+        {
+          "family": "hijoputa",
+          "category": "insult",
+          "forms": [
+            "hijoputa"
+          ],
+          "sourceForms": [
+            "hijoputa"
+          ]
+        },
+        {
+          "family": "pendejo",
+          "category": "insult",
+          "forms": [
+            "pendejo",
+            "pendeja"
+          ],
+          "sourceForms": [
+            "pendejo"
+          ]
+        },
+        {
+          "family": "soplapollas",
+          "category": "insult",
+          "forms": [
+            "soplapollas"
+          ],
+          "sourceForms": [
+            "soplapollas"
+          ]
+        },
+        {
+          "family": "chupapollas",
+          "category": "insult",
+          "forms": [
+            "chupapollas"
+          ],
+          "sourceForms": [
+            "chupapollas"
+          ]
+        },
+        {
+          "family": "caca",
+          "category": "vulgarity",
+          "forms": [
+            "caca"
+          ],
+          "sourceForms": [
+            "caca"
+          ]
+        }
+      ]
+    },
+    {
+      "language": "fr",
+      "entries": [
+        {
+          "family": "merde",
+          "category": "profanity",
+          "forms": [
+            "merde",
+            "merdes",
+            "merdeux",
+            "merdeuse"
+          ],
+          "sourceForms": [
+            "merde",
+            "merdeux",
+            "merdeuse"
+          ]
+        },
+        {
+          "family": "putain",
+          "category": "profanity",
+          "forms": [
+            "putain",
+            "putains"
+          ],
+          "sourceForms": [
+            "putain"
+          ]
+        },
+        {
+          "family": "foutre",
+          "category": "profanity",
+          "forms": [
+            "foutre"
+          ],
+          "sourceForms": [
+            "foutre"
+          ]
+        },
+        {
+          "family": "chier",
+          "category": "profanity",
+          "forms": [
+            "chier",
+            "chié",
+            "chiasse"
+          ],
+          "sourceForms": [
+            "chier",
+            "chiasse"
+          ]
+        },
+        {
+          "family": "branler",
+          "category": "profanity",
+          "forms": [
+            "branler",
+            "branlette",
+            "branleur"
+          ],
+          "sourceForms": [
+            "branler",
+            "branlette",
+            "branleur"
+          ]
+        },
+        {
+          "family": "connard",
+          "category": "insult",
+          "forms": [
+            "connard",
+            "connards"
+          ],
+          "sourceForms": [
+            "connard"
+          ]
+        },
+        {
+          "family": "connasse",
+          "category": "insult",
+          "forms": [
+            "connasse",
+            "connasses"
+          ],
+          "sourceForms": [
+            "connasse"
+          ]
+        },
+        {
+          "family": "enculé",
+          "category": "insult",
+          "forms": [
+            "enculé",
+            "enculée",
+            "encules",
+            "encule"
+          ],
+          "sourceForms": [
+            "enculé",
+            "enculée"
+          ]
+        },
+        {
+          "family": "enfoiré",
+          "category": "insult",
+          "forms": [
+            "enfoiré",
+            "enfoirée"
+          ],
+          "sourceForms": [
+            "enfoiré",
+            "enfoirée"
+          ]
+        },
+        {
+          "family": "salaud",
+          "category": "insult",
+          "forms": [
+            "salaud",
+            "salope"
+          ],
+          "sourceForms": [
+            "salaud",
+            "salope"
+          ]
+        },
+        {
+          "family": "pute",
+          "category": "insult",
+          "forms": [
+            "pute",
+            "putes"
+          ],
+          "sourceForms": [
+            "pute"
+          ]
+        },
+        {
+          "family": "bordel",
+          "category": "vulgarity",
+          "forms": [
+            "bordel"
+          ],
+          "sourceForms": [
+            "bordel"
+          ]
+        },
+        {
+          "family": "caca",
+          "category": "vulgarity",
+          "forms": [
+            "caca"
+          ],
+          "sourceForms": [
+            "caca"
+          ]
+        }
+      ]
+    },
+    {
+      "language": "it",
+      "entries": [
+        {
+          "family": "cazzo",
+          "category": "profanity",
+          "forms": [
+            "cazzo",
+            "cazzi",
+            "cazzata",
+            "cazzone"
+          ],
+          "sourceForms": [
+            "cazzo",
+            "cazzata",
+            "cazzone"
+          ]
+        },
+        {
+          "family": "fanculo",
+          "category": "profanity",
+          "forms": [
+            "fanculo",
+            "vaffanculo"
+          ],
+          "sourceForms": [
+            "vaffanculo"
+          ]
+        },
+        {
+          "family": "fottere",
+          "category": "profanity",
+          "forms": [
+            "fottere",
+            "fottersi"
+          ],
+          "sourceForms": [
+            "fottere",
+            "fottersi"
+          ]
+        },
+        {
+          "family": "merda",
+          "category": "profanity",
+          "forms": [
+            "merda",
+            "merdata",
+            "merdoso"
+          ],
+          "sourceForms": [
+            "merda",
+            "merdata",
+            "merdoso"
+          ]
+        },
+        {
+          "family": "stronzo",
+          "category": "insult",
+          "forms": [
+            "stronzo",
+            "stronza",
+            "stronzata"
+          ],
+          "sourceForms": [
+            "stronzo",
+            "stronza",
+            "stronzata"
+          ]
+        },
+        {
+          "family": "coglione",
+          "category": "insult",
+          "forms": [
+            "coglione",
+            "coglioni"
+          ],
+          "sourceForms": [
+            "coglione",
+            "coglioni"
+          ]
+        },
+        {
+          "family": "imbecille",
+          "category": "insult",
+          "forms": [
+            "imbecille"
+          ],
+          "sourceForms": [
+            "imbecille"
+          ]
+        },
+        {
+          "family": "mignotta",
+          "category": "insult",
+          "forms": [
+            "mignotta",
+            "puttana"
+          ],
+          "sourceForms": [
+            "mignotta",
+            "puttana"
+          ]
+        },
+        {
+          "family": "pirla",
+          "category": "insult",
+          "forms": [
+            "pirla"
+          ],
+          "sourceForms": [
+            "pirla"
+          ]
+        },
+        {
+          "family": "cacca",
+          "category": "vulgarity",
+          "forms": [
+            "cacca",
+            "cagata"
+          ],
+          "sourceForms": [
+            "cacca",
+            "cagata"
+          ]
+        },
+        {
+          "family": "piscio",
+          "category": "vulgarity",
+          "forms": [
+            "piscio",
+            "pisciare"
+          ],
+          "sourceForms": [
+            "piscio",
+            "pisciare"
+          ]
+        }
+      ]
+    },
+    {
+      "language": "pt",
+      "entries": [
+        {
+          "family": "merda",
+          "category": "profanity",
+          "forms": [
+            "merda",
+            "merdas"
+          ],
+          "sourceForms": [
+            "merda"
+          ]
+        },
+        {
+          "family": "porra",
+          "category": "profanity",
+          "forms": [
+            "porra",
+            "porras"
+          ],
+          "sourceForms": [
+            "porra"
+          ]
+        },
+        {
+          "family": "foder",
+          "category": "profanity",
+          "forms": [
+            "foder",
+            "foda"
+          ],
+          "sourceForms": [
+            "foder",
+            "foda"
+          ]
+        },
+        {
+          "family": "caralho",
+          "category": "profanity",
+          "forms": [
+            "caralho",
+            "caralhos"
+          ],
+          "sourceForms": [
+            "caralho"
+          ]
+        },
+        {
+          "family": "esporra",
+          "category": "profanity",
+          "forms": [
+            "esporra"
+          ],
+          "sourceForms": [
+            "esporra"
+          ]
+        },
+        {
+          "family": "bosta",
+          "category": "vulgarity",
+          "forms": [
+            "bosta",
+            "bostas"
+          ],
+          "sourceForms": [
+            "bosta"
+          ]
+        },
+        {
+          "family": "cagar",
+          "category": "vulgarity",
+          "forms": [
+            "cagar",
+            "cagado"
+          ],
+          "sourceForms": [
+            "cagar"
+          ]
+        },
+        {
+          "family": "bastardo",
+          "category": "insult",
+          "forms": [
+            "bastardo",
+            "bastarda"
+          ],
+          "sourceForms": [
+            "bastardo"
+          ]
+        },
+        {
+          "family": "vadia",
+          "category": "insult",
+          "forms": [
+            "vadia",
+            "vadio"
+          ],
+          "sourceForms": [
+            "vadia"
+          ]
+        },
+        {
+          "family": "puta",
+          "category": "insult",
+          "forms": [
+            "puta",
+            "putas"
+          ],
+          "sourceForms": [
+            "puta"
+          ]
+        },
+        {
+          "family": "cacete",
+          "category": "profanity",
+          "forms": [
+            "cacete"
+          ],
+          "sourceForms": [
+            "cacete"
+          ]
+        }
+      ]
+    },
+    {
+      "language": "nl",
+      "entries": [
+        {
+          "family": "godverdomme",
+          "category": "profanity",
+          "forms": [
+            "godverdomme"
+          ],
+          "sourceForms": [
+            "godverdomme"
+          ]
+        },
+        {
+          "family": "kut",
+          "category": "profanity",
+          "forms": [
+            "kut",
+            "kuttelikkertje"
+          ],
+          "sourceForms": [
+            "kut",
+            "kuttelikkertje"
+          ]
+        },
+        {
+          "family": "klote",
+          "category": "profanity",
+          "forms": [
+            "kloten",
+            "klerebeer"
+          ],
+          "sourceForms": [
+            "kloten",
+            "klerebeer"
+          ]
+        },
+        {
+          "family": "neuken",
+          "category": "profanity",
+          "forms": [
+            "neuken",
+            "neukstier"
+          ],
+          "sourceForms": [
+            "neuken",
+            "neukstier"
+          ]
+        },
+        {
+          "family": "zeiken",
+          "category": "profanity",
+          "forms": [
+            "zeiken",
+            "afzeiken",
+            "zeiker"
+          ],
+          "sourceForms": [
+            "zeiken",
+            "afzeiken",
+            "zeiker"
+          ]
+        },
+        {
+          "family": "schijt",
+          "category": "vulgarity",
+          "forms": [
+            "schijt",
+            "schijten"
+          ],
+          "sourceForms": [
+            "schijt",
+            "schijten"
+          ]
+        },
+        {
+          "family": "stront",
+          "category": "vulgarity",
+          "forms": [
+            "stront"
+          ],
+          "sourceForms": [
+            "stront"
+          ]
+        },
+        {
+          "family": "poep",
+          "category": "vulgarity",
+          "forms": [
+            "poep",
+            "poepen"
+          ],
+          "sourceForms": [
+            "poep",
+            "poepen"
+          ]
+        },
+        {
+          "family": "lul",
+          "category": "insult",
+          "forms": [
+            "lul",
+            "klootzak",
+            "oetlul",
+            "paardelul"
+          ],
+          "sourceForms": [
+            "lul",
+            "klootzak",
+            "oetlul",
+            "paardelul"
+          ]
+        },
+        {
+          "family": "hufter",
+          "category": "insult",
+          "forms": [
+            "hufter"
+          ],
+          "sourceForms": [
+            "hufter"
+          ]
+        },
+        {
+          "family": "slet",
+          "category": "insult",
+          "forms": [
+            "slet",
+            "snol"
+          ],
+          "sourceForms": [
+            "slet",
+            "snol"
+          ]
+        },
+        {
+          "family": "hoer",
+          "category": "insult",
+          "forms": [
+            "hoer",
+            "rothoer"
+          ],
+          "sourceForms": [
+            "hoer",
+            "rothoer"
+          ]
+        }
+      ]
+    },
+    {
+      "language": "pl",
+      "entries": [
+        {
+          "family": "kurwa",
+          "category": "profanity",
+          "forms": [
+            "kurwa",
+            "kurwy",
+            "kurwę",
+            "kurwą"
+          ],
+          "sourceForms": [
+            "kurwa",
+            "kurwy"
+          ]
+        },
+        {
+          "family": "chuj",
+          "category": "profanity",
+          "forms": [
+            "chuj",
+            "huj",
+            "chuje",
+            "chujem"
+          ],
+          "sourceForms": [
+            "chuj",
+            "huj"
+          ]
+        },
+        {
+          "family": "jebać",
+          "category": "profanity",
+          "forms": [
+            "jebać",
+            "jebac",
+            "jebany",
+            "jebana"
+          ],
+          "sourceForms": [
+            "jebać",
+            "jebany"
+          ]
+        },
+        {
+          "family": "pierdolić",
+          "category": "profanity",
+          "forms": [
+            "pierdolić",
+            "pierdolic",
+            "pierdole",
+            "pierdoli"
+          ],
+          "sourceForms": [
+            "pierdolić"
+          ]
+        },
+        {
+          "family": "ruchać",
+          "category": "profanity",
+          "forms": [
+            "ruchać",
+            "ruchac"
+          ],
+          "sourceForms": [
+            "ruchać"
+          ]
+        },
+        {
+          "family": "srać",
+          "category": "vulgarity",
+          "forms": [
+            "srać",
+            "srac",
+            "sraczka"
+          ],
+          "sourceForms": [
+            "srać",
+            "sraczka"
+          ]
+        },
+        {
+          "family": "gówno",
+          "category": "vulgarity",
+          "forms": [
+            "gówno",
+            "gowno"
+          ],
+          "sourceForms": [
+            "gówno"
+          ]
+        },
+        {
+          "family": "dupa",
+          "category": "vulgarity",
+          "forms": [
+            "dupa",
+            "dupy",
+            "dupie"
+          ],
+          "sourceForms": [
+            "dupa"
+          ]
+        },
+        {
+          "family": "skurwysyn",
+          "category": "insult",
+          "forms": [
+            "skurwysyn",
+            "skurwysyna"
+          ],
+          "sourceForms": [
+            "skurwysyn"
+          ]
+        },
+        {
+          "family": "pojeb",
+          "category": "insult",
+          "forms": [
+            "pojeb",
+            "pojebany",
+            "popierdolony"
+          ],
+          "sourceForms": [
+            "pojeb",
+            "pojebany",
+            "popierdolony"
+          ]
+        },
+        {
+          "family": "dziwka",
+          "category": "insult",
+          "forms": [
+            "dziwka",
+            "dziwki"
+          ],
+          "sourceForms": [
+            "dziwka"
+          ]
+        },
+        {
+          "family": "kutas",
+          "category": "insult",
+          "forms": [
+            "kutas",
+            "kutasa"
+          ],
+          "sourceForms": [
+            "kutas"
+          ]
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "LDNOOBW",
+      "url": "https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words",
+      "revision": "5faf2ba42d7b1c0977169ec3611df25a3c08eb13",
+      "license": "CC-BY-4.0"
+    }
+  ]
 }

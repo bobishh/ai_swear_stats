@@ -65,7 +65,9 @@ The first import reads the archive. Subsequent refreshes check file metadata and
 
 A local SQLite index stores word frequencies, short thread labels, timestamps, provider/model/project metadata, source health, and byte offsets. Restarting uses cached records. Updating the classifier reuses stored word frequencies without rereading logs. Source logs remain read-only.
 
-The bundled English/Russian lexicon uses explicit word forms, morphology, masked forms, and exceptions. It uses neither regular expressions nor an LLM. Coverage is finite: extend [lexicon.json](Sources/CodexStatsCore/Resources/lexicon.json) with positive and innocent-lookalike regression cases.
+The bundled lexicon supports English and Russian morphology plus reviewed exact-token packs for German (27 forms), Spanish (19), French (29), Italian (24), Portuguese (20), Dutch (24), and Polish (35). Matches carry language, family, category, and recognition method when those labels are unambiguous. The additional packs contain 178 finite forms curated from pinned LDNOOBW candidate lists; they are not an imported profanity union, language detector, or claim of complete language understanding. Project-authored family/category labels and exclusions are documented in [third-party notices](THIRD_PARTY_NOTICES.md). Packs update with app releases; no runtime download or new package dependency is used.
+
+Classification uses exact tokens and explicit forms/morphology, Unicode canonical normalization, lowercasing, and Russian ё→е normalization. Ambiguous cross-language words with conflicting family/category labels remain unclassified unless a language is supplied. Context-dependent terms can still be misclassified; reviewed neutral identity and anatomy candidates are excluded. The classifier uses neither regular expressions nor an LLM. Coverage is finite: extend [lexicon.json](Sources/CodexStatsCore/Resources/lexicon.json) with positive and innocent-lookalike regression cases.
 
 ## Burst reminders
 
