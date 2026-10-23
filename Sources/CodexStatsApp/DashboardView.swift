@@ -290,8 +290,11 @@ struct DashboardView: View {
                 LazyVStack(spacing: 0) {
                     ForEach(results.words) { word in
                         HStack {
-                            Text(rankStems ? word.family : word.id).font(.body.weight(.medium))
+                            Text(rankStems ? (word.displayWord ?? word.family) : word.id)
+                                .font(.body.weight(.medium))
                                 .frame(width: 120, alignment: .leading)
+                                .lineLimit(1).truncationMode(.middle)
+                                .help(rankStems ? "Snowball stem: \(word.family)" : "")
                             Text(word.language ?? "Language undetermined").foregroundStyle(.secondary)
                             Spacer()
                             Text(word.category.rawValue).font(.caption).foregroundStyle(.secondary)

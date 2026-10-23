@@ -11,6 +11,7 @@ struct AnalyticsAggregator {
         result.indexedAt = indexedAt
         var wordCounts: [String: Int] = [:]
         var stemCounts: [StemIdentity: Int] = [:]
+        var stemWordCounts: [StemIdentity: [String: Int]] = [:]
         var modelCounts: [String: (messages: Int, hits: Int)] = [:]
         var threadCounts: [String: ThreadAccumulator] = [:]
         var buckets: [Date: Int] = [:]
@@ -25,7 +26,9 @@ struct AnalyticsAggregator {
                 guard let match = classifier.classifyNormalized(word) else { continue }
                 result.categories[match.category, default: 0] += count
                 wordCounts[word, default: 0] += count
-                stemCounts[classifier.stemIdentity(for: match), default: 0] += count
+                let identity = classifier.stemIdentity(for: match)
+                stemCounts[identity, default: 0] += count
+                stemWordCounts[identity, default: [:]][word, default: 0] += count
                 if match.category == .profanity { hits += count }
             }
             result.profanityHits += hits
@@ -61,9 +64,16 @@ struct AnalyticsAggregator {
         }.sorted { $0.count == $1.count ? $0.id < $1.id : $0.count > $1.count }
         result.timeline = timeline(buckets)
         result.topStems = stemCounts.map { identity, count in
-            RankedWord(
+            let memberCounts = stemWordCounts[identity, default: [:]]
+            let members = memberCounts.keys.sorted()
+            let displayWord = memberCounts.keys.sorted {
+                let leftCount = memberCounts[$0, default: 0]
+                let rightCount = memberCounts[$1, default: 0]
+                return leftCount == rightCount ? $0 < $1 : leftCount > rightCount
+            }.first
+            return RankedWord(
                 id: identity.id, family: identity.stem, category: identity.category, count: count,
-                language: identity.language)
+                language: identity.language, displayWord: displayWord, memberWords: members)
         }.sorted { $0.count == $1.count ? $0.id < $1.id : $0.count > $1.count }
         return result
     }

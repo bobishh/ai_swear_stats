@@ -8,6 +8,14 @@ The dashboard SHALL offer overall, provider/model, and thread views, with word a
 - **WHEN** a model is selected
 - **THEN** counts, threads, ranking, and chart use only that model and overall view restores all records
 
+#### Scenario: Readable family labels and search
+- **GIVEN** recognized forms sharing a stem, language, and category
+- **WHEN** Families is shown
+- **THEN** each family is labeled by its most frequent observed word in the selected data, with lexical order breaking frequency ties
+- **AND** changing the representative leaves the family identity and aggregate count rules intact
+- **AND** searching any member word or the underlying stem finds the family
+- **AND** no matching family shows an explicit empty result
+
 #### Scenario: Scoped source diagnostics
 - **WHEN** a thread, model, or period filter is selected
 - **THEN** source counts and diagnostics include only files contributing messages to that selection

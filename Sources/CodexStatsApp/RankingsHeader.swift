@@ -12,7 +12,9 @@ struct RankingSearchResults {
             self.words = words
         } else {
             self.words = words.filter {
-                $0.id.localizedStandardContains(searchText) || $0.family.localizedStandardContains(searchText)
+                $0.id.localizedStandardContains(searchText)
+                    || $0.family.localizedStandardContains(searchText)
+                    || $0.memberWords.contains { $0.localizedStandardContains(searchText) }
             }
         }
     }
@@ -34,22 +36,22 @@ struct RankingsHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 16) {
-                Text("Words & stems").font(.headline).fixedSize()
+                Text("Words & families").font(.headline).fixedSize()
                 Picker("Ranking", selection: $stems) {
-                    Text("Stems").tag(true)
+                    Text("Families").tag(true)
                     Text("Words").tag(false)
                 }
                 .pickerStyle(.segmented).labelsHidden().frame(width: 180)
                 Spacer(minLength: 0)
             }
             HStack(spacing: 10) {
-                TextField("Search words or stems", text: $search)
+                TextField("Search words or families", text: $search)
                     .textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("rankingSearch")
                 Text(resultStatus).font(.caption).foregroundStyle(.secondary).fixedSize()
             }
             if stems {
-                Text("Stem groups combine recognized words with the same Snowball stem, language and category.")
+                Text("Related word forms grouped by language and category. Labels use the most frequent form.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             HStack(spacing: 16) {

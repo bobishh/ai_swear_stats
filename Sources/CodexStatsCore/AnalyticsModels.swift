@@ -40,13 +40,20 @@ public struct RankedWord: Identifiable, Sendable {
     public let category: LexicalCategory
     public let count: Int
     public var stem: String { family }
+    public let displayWord: String?
+    public let memberWords: [String]
 
-    public init(id: String, family: String, category: LexicalCategory, count: Int, language: String? = nil) {
+    public init(
+        id: String, family: String, category: LexicalCategory, count: Int, language: String? = nil,
+        displayWord: String? = nil, memberWords: [String] = []
+    ) {
         self.id = id
         self.family = family
         self.language = language
         self.category = category
         self.count = count
+        self.displayWord = displayWord
+        self.memberWords = memberWords
     }
 }
 

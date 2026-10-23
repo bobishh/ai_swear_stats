@@ -88,6 +88,29 @@ struct AnalyticsAggregationTests {
         #expect(result.missingTimestamps == 1)
     }
 
+    @Test("Given a stem group, when frequencies tie, then its label uses the lexical-first frequent word")
+    func stemRepresentativeLabel() throws {
+        let facts = [
+            MessageFact(
+                id: "frequent-base", threadID: "base", title: "test", provider: "test", model: nil,
+                effort: nil, timestamp: nil, project: nil, words: ["fuck": 2, "fucked": 4]),
+            MessageFact(
+                id: "frequent-inflection", threadID: "inflection", title: "test", provider: "test", model: nil,
+                effort: nil, timestamp: nil, project: nil, words: ["fucking": 4]),
+        ]
+        let aggregator = AnalyticsAggregator(classifier: try WordClassifier())
+        let all = aggregator.build(facts, filter: AnalyticsFilter(), sources: [], indexedAt: nil)
+        let filtered = aggregator.build(
+            facts, filter: AnalyticsFilter(thread: "inflection"), sources: [], indexedAt: nil)
+        let group = try #require(all.topStems.first)
+        #expect(group.displayWord == "fucked")
+        #expect(group.family == "fuck")
+        #expect(group.memberWords == ["fuck", "fucked", "fucking"])
+        #expect(group.count == 10)
+        #expect(filtered.topStems.first?.displayWord == "fucking")
+        #expect(filtered.topStems.first?.id == group.id)
+    }
+
     @Test("Given recognized words, when ranked by Snowball stem, then inflections group within language and category")
     func snowballStemRanking() throws {
         let fact = MessageFact(
@@ -106,7 +129,10 @@ struct AnalyticsAggregationTests {
         #expect(result.topStems.contains { $0.stem == "ебла" && $0.language == "ru" && $0.count == 1 })
         #expect(result.topStems.contains { $0.stem == "fuck" && $0.language == "en" && $0.count == 3 })
         #expect(result.topStems.contains { $0.stem == "motherfuck" && $0.language == "en" && $0.count == 1 })
-        #expect(result.topStems.contains { $0.stem == "merda" && $0.language == nil && $0.count == 1 })
+        #expect(
+            result.topStems.contains {
+                $0.stem == "merda" && $0.language == nil && $0.count == 1 && $0.displayWord == "merda"
+            })
         #expect(!result.topWords.contains { $0.id == "puta" })
         #expect(result.profanityHits == 13)
     }

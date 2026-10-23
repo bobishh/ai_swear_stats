@@ -22,6 +22,16 @@ struct RankingsTests {
         #expect(results.words.map(\.id) == ["долбоеб"])
     }
 
+    @Test("Given a stem ranking, when searching an inflected member, then the group is found")
+    func findsGroupByMemberWord() {
+        let group = RankedWord(
+            id: "ru|profanity|долбоеб", family: "долбоеб", category: .profanity, count: 63, language: "ru",
+            displayWord: "долбоеб", memberWords: ["долбоеб", "долбоеба"])
+        let results = RankingSearchResults(words: [group], query: "долбоеба")
+        #expect(results.words.map(\.id) == [group.id])
+        #expect(results.status == "Found 1 of 1")
+    }
+
     @Test("Given rankings with no query match, when searched, then no-results state remains visible")
     func reportsNoMatches() {
         let words = [RankedWord(id: "fuck", family: "fuck", category: .profanity, count: 2)]
