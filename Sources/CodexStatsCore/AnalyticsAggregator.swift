@@ -10,8 +10,7 @@ struct AnalyticsAggregator {
         result.sources = sources
         result.indexedAt = indexedAt
         var wordCounts: [String: Int] = [:]
-        var familyCounts: [String: Int] = [:]
-        var familyCategories: [String: LexicalCategory] = [:]
+        var stemCounts: [StemIdentity: Int] = [:]
         var modelCounts: [String: (messages: Int, hits: Int)] = [:]
         var threadCounts: [String: ThreadAccumulator] = [:]
         var buckets: [Date: Int] = [:]
@@ -26,8 +25,7 @@ struct AnalyticsAggregator {
                 guard let match = classifier.classifyNormalized(word) else { continue }
                 result.categories[match.category, default: 0] += count
                 wordCounts[word, default: 0] += count
-                familyCounts[match.family, default: 0] += count
-                familyCategories[match.family] = match.category
+                stemCounts[classifier.stemIdentity(for: match), default: 0] += count
                 if match.category == .profanity { hits += count }
             }
             result.profanityHits += hits
@@ -56,12 +54,16 @@ struct AnalyticsAggregator {
         }.sorted { ($0.latest ?? .distantPast) > ($1.latest ?? .distantPast) }
         result.topWords = wordCounts.compactMap { word, count in
             classifier.classifyNormalized(word).map {
-                RankedWord(id: word, family: $0.family, category: $0.category, count: count)
+                RankedWord(
+                    id: word, family: classifier.stemIdentity(for: $0).stem, category: $0.category, count: count,
+                    language: $0.language)
             }
         }.sorted { $0.count == $1.count ? $0.id < $1.id : $0.count > $1.count }
         result.timeline = timeline(buckets)
-        result.topFamilies = familyCounts.map { family, count in
-            RankedWord(id: family, family: family, category: familyCategories[family] ?? .profanity, count: count)
+        result.topStems = stemCounts.map { identity, count in
+            RankedWord(
+                id: identity.id, family: identity.stem, category: identity.category, count: count,
+                language: identity.language)
         }.sorted { $0.count == $1.count ? $0.id < $1.id : $0.count > $1.count }
         return result
     }

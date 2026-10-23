@@ -190,6 +190,8 @@ struct AnalyticsAcceptanceTests {
         let result = try await changed.refresh(roots: [fixture.logs])
         #expect(result.bytesRead == 0)
         #expect(result.snapshot.profanityHits == 3)
+        #expect(result.snapshot.topStems.contains { $0.stem == "долбоеб" && $0.language == "ru" && $0.count == 1 })
+        #expect(result.snapshot.topStems.contains { $0.stem == "scheiss" && $0.language == "de" && $0.count == 1 })
     }
 
     @Test("Given malformed and unknown records, when indexing, then health is visible and valid rows survive")

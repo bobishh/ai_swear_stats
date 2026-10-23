@@ -19,9 +19,10 @@ let package = Package(
     ],
     targets: [
         .systemLibrary(name: "CSQLite"),
+        .target(name: "CSnowball", path: "Sources/CSnowball"),
         .target(
             name: "CodexStatsCore",
-            dependencies: ["CSQLite"],
+            dependencies: ["CSQLite", "CSnowball"],
             path: "Sources/CodexStatsCore",
             resources: [.process("Resources")]
         ),

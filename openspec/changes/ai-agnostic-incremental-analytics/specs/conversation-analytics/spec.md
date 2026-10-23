@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Overall and filtered analytics
-The dashboard SHALL offer overall, provider/model, and thread views, with word-family rankings, lexical category counts, profanity per thousand words, and profane-message share. Filters SHALL query indexed records without rescanning logs.
+The dashboard SHALL offer overall, provider/model, and thread views, with word and Snowball-stem rankings, lexical category counts, profanity per thousand words, and profane-message share. Stem rankings SHALL group only already-classified words by the same Snowball stem, language, and category; terms without an unambiguous language SHALL remain separate exact-word groups. Filters SHALL query indexed records without rescanning logs.
 
 #### Scenario: Model selection
 - **GIVEN** messages from two providers/models and one unknown model

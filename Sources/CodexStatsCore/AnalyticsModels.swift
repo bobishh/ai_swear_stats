@@ -36,8 +36,18 @@ public struct MessageFact: Codable, Sendable, Identifiable {
 public struct RankedWord: Identifiable, Sendable {
     public let id: String
     public let family: String
+    public let language: String?
     public let category: LexicalCategory
     public let count: Int
+    public var stem: String { family }
+
+    public init(id: String, family: String, category: LexicalCategory, count: Int, language: String? = nil) {
+        self.id = id
+        self.family = family
+        self.language = language
+        self.category = category
+        self.count = count
+    }
 }
 
 public struct ModelSummary: Identifiable, Sendable {
@@ -86,7 +96,12 @@ public struct AnalyticsSnapshot: Sendable {
     public var profaneMessages = 0
     public var categories: [LexicalCategory: Int] = [:]
     public var topWords: [RankedWord] = []
-    public var topFamilies: [RankedWord] = []
+    public var topStems: [RankedWord] = []
+    @available(*, deprecated, message: "Use topStems")
+    public var topFamilies: [RankedWord] {
+        get { topStems }
+        set { topStems = newValue }
+    }
     public var models: [ModelSummary] = []
     public var threads: [ThreadSummary] = []
     public var timeline: [IntensityPoint] = []

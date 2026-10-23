@@ -19,6 +19,7 @@ public struct WordClassifier: Sendable {
     private let exceptions: Set<String>
     private let languageMatches: [String: [String: WordMatch]]
     private let ambiguousWords: Set<String>
+    private let stemByLanguage: [String: [String: String]]
 
     var supportedLanguages: Set<String> {
         Set(matches.values.compactMap(\.language)).union(
@@ -41,11 +42,13 @@ public struct WordClassifier: Sendable {
         let source = try Self.validateSource(lexicon.sources)
         try Self.validatePacks(lexicon.packs, exceptions: lexicon.exceptions)
         let index = Self.buildIndex(lexicon, extraWords: extraWords)
+        let stems = Self.buildStemIndex(index)
         version = lexicon.version
         exceptions = Set(lexicon.exceptions)
         matches = index.matches
         languageMatches = index.byLanguage
         ambiguousWords = index.ambiguous
+        stemByLanguage = stems
         lexiconPacks = lexicon.packs
         lexiconSourceRevision = source.revision
         lexiconSourceLicense = source.license
@@ -154,6 +157,26 @@ public struct WordClassifier: Sendable {
         return matches[word]
     }
 
+    func stemIdentity(for match: WordMatch) -> StemIdentity {
+        let word = normalizeLexiconWord(match.word)
+        let stem = match.language.flatMap { stemByLanguage[$0]?[word] } ?? word
+        return StemIdentity(stem: stem, language: match.language, category: match.category)
+    }
+
+    private static func buildStemIndex(_ index: LexiconIndex) -> [String: [String: String]] {
+        var wordsByLanguage = index.byLanguage
+        for match in index.matches.values {
+            guard let language = match.language else { continue }
+            wordsByLanguage[language, default: [:]][match.word] = match
+        }
+        return wordsByLanguage.mapValues { words in
+            Dictionary(
+                uniqueKeysWithValues: words.keys.map { word in
+                    (word, SnowballStemmer.stem(word, language: words[word]?.language ?? "") ?? word)
+                })
+        }
+    }
+
     /// Preserves supported masking characters inside lexical tokens.
     public func words(in text: String) -> [String: Int] {
         var result: [String: Int] = [:]
@@ -174,6 +197,14 @@ public struct WordClassifier: Sendable {
         return result
     }
 
+}
+
+struct StemIdentity: Hashable, Sendable {
+    let stem: String
+    let language: String?
+    let category: LexicalCategory
+
+    var id: String { "\(language ?? "undetermined")|\(category.rawValue)|\(stem)" }
 }
 
 private func normalizeLexiconWord(_ text: String) -> String {

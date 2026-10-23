@@ -74,8 +74,8 @@ struct AnalyticsAggregationTests {
         #expect(thread.profaneMessageShare == result.profaneMessageShare)
     }
 
-    @Test("Given related word forms, when aggregating, then their family rank combines inflections")
-    func familyRank() throws {
+    @Test("Given related word forms, when aggregating, then their Snowball stem rank combines inflections")
+    func stemRank() throws {
         let classifier = try WordClassifier()
         let fact = MessageFact(
             id: "1", threadID: "thread", title: "test", provider: "test", model: nil,
@@ -83,8 +83,50 @@ struct AnalyticsAggregationTests {
         let result = AnalyticsAggregator(classifier: classifier).build(
             [fact], filter: AnalyticsFilter(), sources: [], indexedAt: nil)
         #expect(result.topWords.count == 2)
-        #expect(result.topFamilies.first?.id == "fuck")
-        #expect(result.topFamilies.first?.count == 3)
+        #expect(result.topStems.first?.stem == "fuck")
+        #expect(result.topStems.first?.count == 3)
         #expect(result.missingTimestamps == 1)
+    }
+
+    @Test("Given recognized words, when ranked by Snowball stem, then inflections group within language and category")
+    func snowballStemRanking() throws {
+        let fact = MessageFact(
+            id: "snowball-groups", threadID: "thread", title: "test", provider: "test", model: nil,
+            effort: nil, timestamp: nil, project: nil,
+            words: [
+                "долбоеб": 1, "долбоеба": 2, "долбоебы": 3, "долбоебина": 1, "долбоебизм": 1,
+                "ебать": 1, "еблан": 1, "fucked": 2, "fucking": 1, "motherfuck": 1,
+                "puta": 1, "merda": 1,
+            ])
+        let result = AnalyticsAggregator(classifier: try WordClassifier()).build(
+            [fact], filter: AnalyticsFilter(), sources: [], indexedAt: nil)
+        #expect(result.topStems.contains { $0.stem == "долбоеб" && $0.language == "ru" && $0.count == 6 })
+        #expect(!result.topWords.contains { $0.id == "долбоебина" || $0.id == "долбоебизм" })
+        #expect(result.topStems.contains { $0.stem == "еба" && $0.language == "ru" && $0.count == 1 })
+        #expect(result.topStems.contains { $0.stem == "ебла" && $0.language == "ru" && $0.count == 1 })
+        #expect(result.topStems.contains { $0.stem == "fuck" && $0.language == "en" && $0.count == 3 })
+        #expect(result.topStems.contains { $0.stem == "motherfuck" && $0.language == "en" && $0.count == 1 })
+        #expect(result.topStems.contains { $0.stem == "merda" && $0.language == nil && $0.count == 1 })
+        #expect(!result.topWords.contains { $0.id == "puta" })
+        #expect(result.profanityHits == 13)
+    }
+
+    @Test(
+        "Given one spelling with conflicting language labels, when grouping, then IDs keep language and category distinct"
+    )
+    func languageAndCategoryArePartOfStemIdentity() throws {
+        let classifier = try WordClassifier()
+        guard let spanish = classifier.classify("puta", language: "es"),
+            let portuguese = classifier.classify("puta", language: "pt")
+        else {
+            Issue.record("Expected language-specific classifications")
+            return
+        }
+        let spanishKey = classifier.stemIdentity(for: spanish)
+        let portugueseKey = classifier.stemIdentity(for: portuguese)
+        #expect(spanishKey.id != portugueseKey.id)
+        #expect(spanishKey.language == "es")
+        #expect(portugueseKey.language == "pt")
+        #expect(spanishKey.category != portugueseKey.category)
     }
 }

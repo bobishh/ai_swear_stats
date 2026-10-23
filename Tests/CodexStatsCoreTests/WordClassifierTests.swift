@@ -26,10 +26,21 @@ struct WordClassifierTests {
         ] {
             let match = classifier.classify(word)
             #expect(match?.category == .profanity, "Missing: \(word)")
-            #expect(match?.family == "ебать", "Wrong family: \(word)")
+            #expect(match?.family == "ебать", "Legacy classifier label changed: \(word)")
         }
-        for word in ["долбить", "долбеж", "долбежка"] {
+        for word in ["долбить", "долбеж", "долбежка", "долбоебина", "долбоебизм"] {
             #expect(classifier.classify(word) == nil, "False positive: \(word)")
+        }
+        for (word, category) in [
+            ("хер", LexicalCategory.profanity), ("хера", LexicalCategory.profanity),
+            ("хером", LexicalCategory.profanity), ("херня", LexicalCategory.profanity),
+            ("cunt", LexicalCategory.profanity), ("bastard", LexicalCategory.insult),
+            ("motherfuck", LexicalCategory.profanity), ("bullshit", LexicalCategory.profanity),
+            ("puttana", LexicalCategory.insult), ("klootzak", LexicalCategory.insult),
+            ("popierdolony", LexicalCategory.insult),
+        ] {
+            let match = classifier.classify(word)
+            #expect(match?.category == category, "Category changed: \(word)")
         }
     }
 
@@ -90,7 +101,7 @@ struct WordClassifierTests {
     func packIntegrity() throws {
         let url = try #require(ResourceBundle.bundle.url(forResource: "lexicon", withExtension: "json"))
         let lexicon = try JSONDecoder().decode(TestLexicon.self, from: Data(contentsOf: url))
-        #expect(lexicon.version == 3)
+        #expect(lexicon.version == 4)
         #expect(lexicon.sources.count == 1)
         #expect(lexicon.sources.first?.id == "LDNOOBW")
         #expect(

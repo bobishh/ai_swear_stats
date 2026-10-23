@@ -1,0 +1,4 @@
+module CSnowball {
+    header "StemmerBridge.h"
+    export *
+}

@@ -38,10 +38,11 @@ struct StatsWindowControllerTests {
         _ = NSApplication.shared
         let header = NSHostingView(
             rootView: RankingsHeader(
-                families: .constant(true), categories: [.profanity: 999_999, .insult: 999_999, .vulgarity: 999_999]
+                stems: .constant(true), search: .constant(""), resultStatus: "Found 0 of 0",
+                categories: [.profanity: 999_999, .insult: 999_999, .vulgarity: 999_999]
             ).frame(width: 592))
         #expect(header.fittingSize.height > 30)
-        #expect(header.fittingSize.height < 75)
+        #expect(header.fittingSize.height < 130)
     }
 
     @Test("Given a narrow sidebar, when a hot thread is selected, then its title and percentage fit together")

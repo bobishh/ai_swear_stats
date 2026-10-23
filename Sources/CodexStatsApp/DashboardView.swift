@@ -7,7 +7,8 @@ struct DashboardView: View {
     let actions: DashboardActions
     @State private var dragRange: ClosedRange<Date>?
     @State private var period = 0
-    @State private var rankFamilies = true
+    @AppStorage("rankingFamilies") private var rankStems = false
+    @State private var rankingSearch = ""
     @AppStorage("threadSortOrder") private var threadSort = ThreadSortOrder.temperature
 
     var body: some View {
@@ -277,20 +278,28 @@ struct DashboardView: View {
     }
 
     private var rankings: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            RankingsHeader(families: $rankFamilies, categories: state.snapshot.categories)
-            if state.snapshot.topWords.isEmpty {
-                Text("No classified words in this selection.").foregroundStyle(.secondary).padding(.vertical)
-            }
-            ForEach(Array((rankFamilies ? state.snapshot.topFamilies : state.snapshot.topWords).prefix(15))) { word in
-                HStack {
-                    Text(word.id).font(.body.weight(.medium)).frame(width: 120, alignment: .leading)
-                    Text(word.family).foregroundStyle(.secondary)
-                    Spacer()
-                    Text(word.category.rawValue).font(.caption).foregroundStyle(.secondary)
-                    Text(word.count.formatted()).monospacedDigit().frame(width: 70, alignment: .trailing)
+        let source = rankStems ? state.snapshot.topStems : state.snapshot.topWords
+        let results = RankingSearchResults(words: source, query: rankingSearch)
+        return VStack(alignment: .leading, spacing: 10) {
+            RankingsHeader(
+                stems: $rankStems, search: $rankingSearch, resultStatus: results.status,
+                categories: state.snapshot.categories)
+            if let emptyMessage = results.emptyMessage {
+                Text(emptyMessage).foregroundStyle(.secondary).padding(.vertical)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(results.words) { word in
+                        HStack {
+                            Text(rankStems ? word.family : word.id).font(.body.weight(.medium))
+                                .frame(width: 120, alignment: .leading)
+                            Text(word.language ?? "Language undetermined").foregroundStyle(.secondary)
+                            Spacer()
+                            Text(word.category.rawValue).font(.caption).foregroundStyle(.secondary)
+                            Text(word.count.formatted()).monospacedDigit().frame(width: 70, alignment: .trailing)
+                        }
+                        Divider()
+                    }
                 }
-                Divider()
             }
         }.textSelection(.enabled)
     }
