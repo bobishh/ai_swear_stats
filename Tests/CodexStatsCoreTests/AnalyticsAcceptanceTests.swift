@@ -182,14 +182,14 @@ struct AnalyticsAcceptanceTests {
     func reclassification() async throws {
         let fixture = try LogFixture()
         defer { fixture.remove() }
-        try fixture.write("chat.jsonl", lines: [generic(id: "1", text: "toaster")])
+        try fixture.write("chat.jsonl", lines: [generic(id: "1", text: "toaster долбоёб")])
         let first = try AnalyticsIndex(databaseURL: fixture.database)
-        #expect(try await first.refresh(roots: [fixture.logs]).snapshot.profanityHits == 0)
+        #expect(try await first.refresh(roots: [fixture.logs]).snapshot.profanityHits == 1)
         let classifier = try WordClassifier(extraWords: ["toaster": "fuck"])
         let changed = try AnalyticsIndex(databaseURL: fixture.database, classifier: classifier)
         let result = try await changed.refresh(roots: [fixture.logs])
         #expect(result.bytesRead == 0)
-        #expect(result.snapshot.profanityHits == 1)
+        #expect(result.snapshot.profanityHits == 2)
     }
 
     @Test("Given malformed and unknown records, when indexing, then health is visible and valid rows survive")
