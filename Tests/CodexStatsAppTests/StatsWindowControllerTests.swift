@@ -55,6 +55,32 @@ struct StatsWindowControllerTests {
         #expect(row.fittingSize.height < 120)
     }
 
+    @Test("Given the narrow dashboard content width, when showing date controls, then From and To fit on one row")
+    func compactDateRangeControls() {
+        _ = NSApplication.shared
+        let controls = NSHostingView(
+            rootView: DateRangePickerRow(
+                from: .constant(Date(timeIntervalSince1970: 1_000_000)),
+                to: .constant(Date(timeIntervalSince1970: 1_100_000))
+            ).frame(width: 592))
+        #expect(controls.fittingSize.width <= 592)
+        #expect(controls.fittingSize.height < 60)
+    }
+
+    @Test(
+        "Given available and cached sources, when expanding diagnostics, then the file list stays bounded and readable")
+    func expandedSourcesLayout() {
+        _ = NSApplication.shared
+        var snapshot = AnalyticsSnapshot.empty
+        snapshot.sources = (0..<20).map { number in
+            SourceHealth(path: "/example/logs/thread-\(number).jsonl", error: number == 0 ? "Source unavailable" : nil)
+        }
+        snapshot.sourceMessageCounts = ["/example/logs/thread-0.jsonl": 42]
+        let view = NSHostingView(rootView: SourcesView(snapshot: snapshot, expanded: true).frame(width: 592))
+        #expect(view.fittingSize.height > 100)
+        #expect(view.fittingSize.height < 450)
+    }
+
     @Test("Given an overall dashboard, when selecting a model, then its filter is sent to the index")
     func selectsModel() {
         _ = NSApplication.shared

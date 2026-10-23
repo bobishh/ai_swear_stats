@@ -5,6 +5,7 @@ import SwiftUI
 struct DashboardView: View {
     @ObservedObject var state: DashboardState
     let actions: DashboardActions
+    @State private var dragRange: ClosedRange<Date>?
     @State private var period = 0
     @State private var rankFamilies = true
     @AppStorage("threadSortOrder") private var threadSort = ThreadSortOrder.temperature
@@ -19,7 +20,7 @@ struct DashboardView: View {
                     metrics
                     intensity
                     rankings
-                    sourceStatus
+                    SourcesView(snapshot: state.snapshot)
                 }.padding(24)
             }.frame(minWidth: 640)
         }
@@ -86,7 +87,7 @@ struct DashboardView: View {
                 Button("Refresh", systemImage: "arrow.clockwise", action: actions.refresh)
                     .disabled(state.isScanning).keyboardShortcut("r")
             }
-            HStack {
+            HStack(alignment: .center, spacing: 12) {
                 Picker(
                     "Model",
                     selection: Binding(
@@ -100,19 +101,19 @@ struct DashboardView: View {
                 ) {
                     Text("All models").tag("")
                     ForEach(state.models) { Text($0.id).tag($0.id) }
-                }.frame(maxWidth: 360)
-                Picker("Period", selection: $period) {
+                }.frame(maxWidth: 300)
+                Picker(
+                    "Period",
+                    selection: Binding(get: { period }, set: { value in applyPeriod(value) })
+                ) {
                     Text("All time").tag(0)
                     Text("24 hours").tag(1)
                     Text("7 days").tag(7)
                     Text("30 days").tag(30)
+                    if period == -1 { Text("Custom range").tag(-1) }
                 }.frame(width: 190)
-                    .onChange(of: period) { value in
-                        var filter = state.filter
-                        filter.since = value == 0 ? nil : Date().addingTimeInterval(-Double(value) * 86_400)
-                        actions.filter(filter)
-                    }
             }
+            DateRangePickerRow(from: dateBinding(isStart: true), to: dateBinding(isStart: false))
         }
     }
 
@@ -153,7 +154,7 @@ struct DashboardView: View {
     private var intensity: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Lexical intensity").font(.headline)
-            Text("Profanities per second · one-minute buckets · most recent 24h of selected data")
+            Text("Profanities per second · \(timelineBucketDescription) buckets · \(selectedRangeLabel)")
                 .font(.caption).foregroundStyle(.secondary)
             if state.snapshot.timeline.isEmpty {
                 Text(
@@ -163,15 +164,116 @@ struct DashboardView: View {
                 .foregroundStyle(.secondary).frame(maxWidth: .infinity).frame(height: 150)
             } else {
                 Chart(state.snapshot.timeline) { point in
-                    BarMark(x: .value("Time", point.time, unit: .minute), y: .value("Profanities/s", point.perSecond))
-                        .foregroundStyle(Color.orange)
-                }.frame(height: 170).chartXAxis { AxisMarks(values: .automatic(desiredCount: 5)) }
+                    BarMark(
+                        xStart: .value("Start", point.time), xEnd: .value("End", point.end),
+                        y: .value("Profanities/s", point.perSecond)
+                    ).foregroundStyle(Color.orange)
+                }
+                .frame(height: 170)
+                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 5)) }
+                .chartOverlay { proxy in
+                    GeometryReader { geometry in
+                        let plotFrame = geometry[proxy.plotAreaFrame]
+                        ZStack(alignment: .topLeading) {
+                            Rectangle().fill(.clear).contentShape(Rectangle())
+                                .gesture(
+                                    DragGesture(minimumDistance: 4)
+                                        .onChanged { value in
+                                            dragRange = dateRange(value, proxy: proxy, geometry: geometry)
+                                        }
+                                        .onEnded { value in
+                                            defer { dragRange = nil }
+                                            guard let range = dateRange(value, proxy: proxy, geometry: geometry),
+                                                range.upperBound.timeIntervalSince(range.lowerBound) >= 60
+                                            else { return }
+                                            period = -1
+                                            actions.filter(DateRangeSelection.applying(range, to: state.filter))
+                                        })
+                            if let dragRange,
+                                let start = proxy.position(forX: dragRange.lowerBound),
+                                let end = proxy.position(forX: dragRange.upperBound)
+                            {
+                                Rectangle()
+                                    .fill(Color.accentColor.opacity(0.18))
+                                    .frame(width: abs(end - start), height: plotFrame.height)
+                                    .offset(x: plotFrame.minX + min(start, end), y: plotFrame.minY)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                    }
+                }
             }
             if state.snapshot.missingTimestamps > 0 {
                 Text("\(state.snapshot.missingTimestamps) messages have no timestamp and are excluded from the chart.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var timelineBucketDescription: String {
+        let seconds = state.snapshot.timeline.first?.duration ?? 60
+        if seconds == 60 { return "one-minute" }
+        if seconds == 3_600 { return "one-hour" }
+        let days = Int(seconds / 86_400)
+        return days == 1 ? "one-day" : "\(days)-day"
+    }
+
+    private var periodSelection: Int {
+        period
+    }
+
+    private var selectedRangeLabel: String {
+        if let dragRange {
+            return
+                "\(dragRange.lowerBound.formatted(date: .abbreviated, time: .shortened)) – \(dragRange.upperBound.formatted(date: .abbreviated, time: .shortened))"
+        }
+        if let since = state.filter.since, let until = state.filter.until {
+            return
+                "\(since.formatted(date: .abbreviated, time: .shortened)) – \(until.formatted(date: .abbreviated, time: .shortened))"
+        }
+        switch periodSelection {
+        case 1: return "last 24 hours"
+        case 7: return "last 7 days"
+        case 30: return "last 30 days"
+        default: return "full selected history"
+        }
+    }
+
+    private func applyPeriod(_ value: Int) {
+        guard [0, 1, 7, 30].contains(value) else { return }
+        period = value
+        actions.filter(DateRangeSelection.applyingPreset(value, now: Date(), to: state.filter))
+    }
+
+    private func dateBinding(isStart: Bool) -> Binding<Date> {
+        Binding(
+            get: {
+                if let dragRange { return isStart ? dragRange.lowerBound : dragRange.upperBound }
+                let selected = isStart ? state.filter.since : state.filter.until
+                return selected ?? (isStart ? state.snapshot.timeline.first?.time : state.snapshot.timeline.last?.end)
+                    ?? Date()
+            },
+            set: { value in
+                let filter = state.filter
+                let from = filter.since ?? state.snapshot.timeline.first?.time ?? value
+                let to = filter.until ?? state.snapshot.timeline.last?.end ?? value
+                let range = DateRangeSelection.updating(
+                    start: isStart, to: value, currentStart: from, currentEnd: to)
+                period = -1
+                actions.filter(DateRangeSelection.applying(range, to: filter))
+            })
+    }
+
+    private func dateRange(_ value: DragGesture.Value, proxy: ChartProxy, geometry: GeometryProxy) -> ClosedRange<Date>?
+    {
+        let frame = geometry[proxy.plotAreaFrame]
+        guard frame.width > 0 else { return nil }
+        func date(at x: CGFloat) -> Date? {
+            let clamped = min(max(x - frame.minX, 0), frame.width)
+            return proxy.value(atX: clamped)
+        }
+        guard let first = date(at: value.startLocation.x), let last = date(at: value.location.x) else { return nil }
+        return DateRangeSelection.ordered(first, last)
     }
 
     private var rankings: some View {
@@ -193,31 +295,22 @@ struct DashboardView: View {
         }.textSelection(.enabled)
     }
 
-    private var sourceStatus: some View {
-        DisclosureGroup(
-            "Sources · \(state.snapshot.sources.count) \(state.snapshot.sources.count == 1 ? "file" : "files") in selection"
-        ) {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(
-                    state.snapshot.sources.filter {
-                        $0.error != nil || $0.malformedLines > 0 || $0.unsupportedLines > 0
-                    }
-                ) { source in
-                    Text(
-                        "\(source.path): \(source.error ?? "\(source.malformedLines) malformed, \(source.unsupportedLines) unsupported records")"
-                    )
-                    .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                }
-                Text("Supported: Codex, Claude Code, generic JSONL. Missing models are labeled Unknown.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }.frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
     private func metric(_ title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(value).font(.system(size: 28, weight: .semibold, design: .rounded)).monospacedDigit()
             Text(title).font(.caption).foregroundStyle(.secondary)
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct DateRangePickerRow: View {
+    let from: Binding<Date>
+    let to: Binding<Date>
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            DatePicker("From", selection: from, displayedComponents: [.date, .hourAndMinute])
+            DatePicker("To", selection: to, displayedComponents: [.date, .hourAndMinute])
+        }
     }
 }

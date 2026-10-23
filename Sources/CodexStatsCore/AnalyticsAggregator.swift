@@ -68,14 +68,30 @@ struct AnalyticsAggregator {
 
     private func timeline(_ buckets: [Date: Int]) -> [IntensityPoint] {
         guard let first = buckets.keys.min(), let last = buckets.keys.max() else { return [] }
-        // Keep the chart bounded to the most recent 24 hours; period totals still cover all matching records.
-        var time = max(first, last.addingTimeInterval(-86_340))
+        let duration = bucketDuration(first: first, last: last)
+        func start(_ time: Date) -> Date {
+            Date(timeIntervalSince1970: floor(time.timeIntervalSince1970 / duration) * duration)
+        }
+        var counts: [Date: Int] = [:]
+        for (time, hits) in buckets { counts[start(time), default: 0] += hits }
+        var time = start(first)
+        let end = start(last)
         var points: [IntensityPoint] = []
-        while time <= last {
-            points.append(IntensityPoint(time: time, hits: buckets[time, default: 0]))
-            time = time.addingTimeInterval(60)
+        while time <= end {
+            points.append(IntensityPoint(time: time, hits: counts[time, default: 0], duration: duration))
+            time = time.addingTimeInterval(duration)
         }
         return points
+    }
+
+    private func bucketDuration(first: Date, last: Date) -> TimeInterval {
+        let maximumPoints = 1_440.0
+        for duration in [60.0, 3_600.0, 86_400.0] {
+            let count = floor(last.timeIntervalSince1970 / duration) - floor(first.timeIntervalSince1970 / duration) + 1
+            if count <= maximumPoints { return duration }
+        }
+        // Coarsen exceptionally long histories rather than dropping their oldest records.
+        return ceil(last.timeIntervalSince(first) / 86_400 / (maximumPoints - 1)) * 86_400
     }
 }
 

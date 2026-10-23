@@ -44,12 +44,14 @@ public actor AnalyticsIndex {
                     health.error = "Source unavailable; showing cached data"
                 }
                 return health
-            }.sorted { $0.path < $1.path } + (filter == AnalyticsFilter() ? folderWarnings : [])
+            }.sorted { $0.path < $1.path }
         let indexedAt = try database.rows("SELECT value FROM settings WHERE key='indexed_at'").first?["value"].flatMap(
             Double.init
         ).map(Date.init(timeIntervalSince1970:))
-        let result = AnalyticsAggregator(classifier: classifier).build(
+        var result = AnalyticsAggregator(classifier: classifier).build(
             facts, filter: filter, sources: health, indexedAt: indexedAt)
+        for record in selected { result.sourceMessageCounts[record.source, default: 0] += 1 }
+        result.folderWarnings = filter == AnalyticsFilter() ? folderWarnings : []
         if snapshots.count >= 16 { snapshots.removeAll() }
         snapshots[key] = result
         return result

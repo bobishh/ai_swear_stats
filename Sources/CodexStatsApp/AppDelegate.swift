@@ -144,7 +144,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let displayed = filtered ?? (dashboard.state.filter == AnalyticsFilter() ? snapshot : dashboard.state.snapshot)
         dashboard.update(snapshot: displayed, isScanning: isScanning, error: scanError, roots: config.rootPaths)
         dashboard.state.models = snapshot.models
-        if dashboard.state.filter.model == nil, dashboard.state.filter.since == nil {
+        if dashboard.state.filter.model == nil, dashboard.state.filter.since == nil,
+            dashboard.state.filter.until == nil
+        {
             dashboard.state.threads = snapshot.threads
         }
         statusItem?.button?.image = NSImage(

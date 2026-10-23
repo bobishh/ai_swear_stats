@@ -3,6 +3,46 @@ import Testing
 @testable import CodexStatsCore
 
 struct AnalyticsAcceptanceTests {
+    @Test(
+        "Given a selected date interval, when filtering analytics, then metrics and navigation include only messages inside it"
+    )
+    func selectedDateInterval() async throws {
+        let fixture = try LogFixture()
+        defer { fixture.remove() }
+        try fixture.write(
+            "range.jsonl",
+            lines: [
+                #"{"id":"before","thread_id":"before","role":"user","content":"fuck","timestamp":"2026-10-20T23:59:00Z"}"#,
+                #"{"id":"inside","thread_id":"inside","role":"user","content":"fuck fuck","timestamp":"2026-10-21T12:00:00Z"}"#,
+                #"{"id":"after","thread_id":"after","role":"user","content":"fuck fuck fuck","timestamp":"2026-10-22T00:01:00Z"}"#,
+            ])
+        let index = try AnalyticsIndex(databaseURL: fixture.database)
+        _ = try await index.refresh(roots: [fixture.logs])
+        let filter = AnalyticsFilter(
+            since: Date(timeIntervalSince1970: 1_792_584_000),
+            until: Date(timeIntervalSince1970: 1_792_627_200))
+        let selected = try await index.snapshot(filter: filter)
+        #expect(selected.messages == 1)
+        #expect(selected.profanityHits == 2)
+        #expect(selected.threads.map(\.id) == ["generic:inside"])
+    }
+
+    @Test("Given a missing folder, when listing source files, then folder warnings do not inflate file counts")
+    func sourceFilesExcludeFolders() async throws {
+        let fixture = try LogFixture()
+        defer { fixture.remove() }
+        try fixture.write("chat.jsonl", lines: [generic(id: "1", text: "hello"), generic(id: "2", text: "fuck")])
+        let missing = fixture.root.appendingPathComponent("missing")
+        let index = try AnalyticsIndex(databaseURL: fixture.database)
+        let result = try await index.refresh(roots: [fixture.logs, missing])
+        #expect(result.snapshot.sources.count == 1)
+        #expect(result.snapshot.sources.first?.path == fixture.logs.appendingPathComponent("chat.jsonl").path)
+        #expect(result.snapshot.sourceMessageCounts[fixture.logs.appendingPathComponent("chat.jsonl").path] == 2)
+        #expect(result.snapshot.folderWarnings.map(\.path) == [missing.path])
+        let reopened = try AnalyticsIndex(databaseURL: fixture.database)
+        #expect(try await reopened.snapshot().sourceMessageCounts.values.reduce(0, +) == 2)
+    }
+
     @Test("Given unrelated source files, when filtering a thread, model or period, then diagnostics follow selection")
     func scopedSources() async throws {
         let fixture = try LogFixture()
@@ -28,6 +68,7 @@ struct AnalyticsAcceptanceTests {
         for filter in filters {
             let snapshot = try await index.snapshot(filter: filter)
             #expect(snapshot.messages == 1)
+            #expect(snapshot.sourceMessageCounts.values.reduce(0, +) == 1)
             #expect(snapshot.sources.map { URL(fileURLWithPath: $0.path).lastPathComponent } == ["a.jsonl"])
         }
         #expect(try await index.snapshot(filter: AnalyticsFilter(thread: "missing")).sources.isEmpty)

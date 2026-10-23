@@ -21,10 +21,11 @@ New installations look in `~/.codex`, `~/.codex-work`, and `~/.claude/projects`.
 ## Explore
 
 - **All threads, model, and period filters** narrow the totals, rankings, chart, and source diagnostics. Select a thread for its statistics.
+- **Custom dates:** drag across the intensity chart or edit **From / To**. The date and time controls display the selected range and filter the same dashboard data. Choose **All time** to clear both bounds. Drags spanning less than one minute are ignored.
 - **Words / Families** switches between individual forms and combined lexical families.
 - **Thread heat** runs from blue through purple and orange to red. Each row shows the actual percentage of messages containing profanity.
 - **Sort → Hottest first** uses the same temperature as the row color. **Recent activity** orders by latest message. The chosen mode survives restarts.
-- **Sources** reports malformed records, unsupported formats, and unavailable files. Inside a filtered view, it includes only files contributing messages to that selection.
+- **Sources** lists every file in the current selection, with indexed message counts, health details, and a Finder action. Switch between **All files** and **Issues**, or filter by path. Folder warnings are separate and do not inflate the file count. Inside a filtered analytics view, only contributing files are included.
 
 Temperature accounts for conversation size:
 
@@ -36,7 +37,7 @@ Short threads stay cooler, so a couple of spicy replies do not dominate the list
 
 The dashboard reports profanity hits, messages, hits per 1,000 words, and the share of messages containing profanity. **Insults**, **vulgarity**, and **profanity** are separate lexical categories; only profanity contributes to heat and reminders.
 
-The intensity chart shows hits per second in one-minute buckets, including quiet minutes, over the most recent 24 hours of the selected data. Period totals can cover a longer interval. Messages without timestamps remain in totals but are excluded from the chart. This measures language, not psychological stress.
+The intensity chart covers the full time span of the selected timestamped messages. Buckets adapt from minutes to hours, days, or multiple days to keep at most 1,440 points without discarding older history. Rates divide each bucket’s hit count by its duration in seconds, including quiet intervals as zero. Messages without timestamps remain in totals but are excluded from the chart. This measures language, not psychological stress.
 
 ## Supported logs
 

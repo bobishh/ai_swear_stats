@@ -4,16 +4,19 @@ public struct AnalyticsFilter: Sendable, Hashable {
     public var model: String?
     public var thread: String?
     public var since: Date?
-    public init(model: String? = nil, thread: String? = nil, since: Date? = nil) {
+    public var until: Date?
+    public init(model: String? = nil, thread: String? = nil, since: Date? = nil, until: Date? = nil) {
         self.model = model
         self.thread = thread
         self.since = since
+        self.until = until
     }
 
     func matches(_ fact: MessageFact) -> Bool {
         (model == nil || model == fact.modelID)
             && (thread == nil || thread == fact.threadID)
             && (since == nil || fact.timestamp.map { $0 >= (since ?? .distantPast) } == true)
+            && (until == nil || fact.timestamp.map { $0 <= (until ?? .distantFuture) } == true)
     }
 }
 
@@ -57,8 +60,15 @@ public struct ThreadSummary: Identifiable, Sendable {
 public struct IntensityPoint: Identifiable, Sendable {
     public let time: Date
     public let hits: Int
+    public let duration: TimeInterval
+    public init(time: Date, hits: Int, duration: TimeInterval = 60) {
+        self.time = time
+        self.hits = hits
+        self.duration = duration
+    }
     public var id: Date { time }
-    public var perSecond: Double { Double(hits) / 60 }
+    public var end: Date { time.addingTimeInterval(duration) }
+    public var perSecond: Double { Double(hits) / duration }
 }
 
 public struct SourceHealth: Codable, Sendable, Identifiable {
@@ -81,6 +91,8 @@ public struct AnalyticsSnapshot: Sendable {
     public var threads: [ThreadSummary] = []
     public var timeline: [IntensityPoint] = []
     public var sources: [SourceHealth] = []
+    public var sourceMessageCounts: [String: Int] = [:]
+    public var folderWarnings: [SourceHealth] = []
     public var missingTimestamps = 0
     public var indexedAt: Date?
     public var hitsPerThousandWords: Double {
