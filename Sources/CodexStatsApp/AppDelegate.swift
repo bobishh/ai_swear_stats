@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import CodexStatsCore
 import Foundation
 
@@ -13,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var timer: Timer?
     private var refreshTask: Task<Void, Never>?
     private var notifications: NotificationService?
+    private let speechSynthesizer = AVSpeechSynthesizer()
+    private var soundPolicy = LiveSoundPolicy()
     private var notificationSettings: NotificationSettings?
     private var notificationTask: Task<Void, Never>?
     private var snapshot = AnalyticsSnapshot.empty
@@ -29,9 +32,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onFilter: { [weak self] filter in self?.applyFilter(filter) },
             onAddFolder: { [weak self] in self?.addFolder() },
             onRemoveFolder: { [weak self] path in self?.removeFolder(path) },
-            onNotifications: { [weak self] enabled in self?.setNotifications(enabled) })
+            onNotifications: { [weak self] enabled in self?.setNotifications(enabled) },
+            onSound: { [weak self] enabled in self?.setSound(enabled) },
+            onPreviewSound: { [weak self] in self?.previewSound() })
         if let dashboard {
             dashboard.state.notificationsEnabled = config.notificationsEnabled
+            dashboard.state.soundEnabled = config.soundEnabled
             notificationSettings = NotificationSettings(
                 state: dashboard.state,
                 authorize: { [weak self] in
@@ -108,10 +114,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         }
                     }
                 }
+                let rootsStillCurrent = roots == config.resolvedRootURLs()
                 snapshot =
-                    roots == config.resolvedRootURLs()
+                    rootsStillCurrent
                     ? result.snapshot : try await index.snapshot(roots: config.resolvedRootURLs())
                 dashboard?.state.bytesRead = result.bytesRead
+                if rootsStillCurrent { playSoundForLiveProfanity(result.liveMessages) }
                 if dashboard?.state.filter != AnalyticsFilter() { await refreshFilteredSnapshot() }
                 try await evaluateNotifications(result.liveMessages, index: index)
             } catch is CancellationError { return } catch { showError(error) }
@@ -181,6 +189,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setNotifications(_ enabled: Bool) {
         guard let notificationSettings, dashboard?.state.notificationRequestPending != true else { return }
         notificationTask = Task { await notificationSettings.setEnabled(enabled) }
+    }
+
+    private func setSound(_ enabled: Bool) {
+        var updated = config
+        updated.soundEnabled = enabled
+        do {
+            try configStore.save(updated)
+            config = updated
+            dashboard?.state.soundEnabled = enabled
+            if !enabled { speechSynthesizer.stopSpeaking(at: .immediate) }
+        } catch {
+            dashboard?.state.soundEnabled = config.soundEnabled
+            showError(error)
+        }
+    }
+
+    private func playSoundForLiveProfanity(_ messages: [MessageFact]) {
+        guard !speechSynthesizer.isSpeaking, let classifier,
+            soundPolicy.shouldPlay(messages, enabled: config.soundEnabled, classifier: classifier)
+        else { return }
+        speakOuch()
+    }
+
+    private func previewSound() {
+        guard config.soundEnabled, !speechSynthesizer.isSpeaking else { return }
+        speakOuch()
+    }
+
+    private func speakOuch() {
+        let utterance = AVSpeechUtterance(string: "Ouch!")
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.9
+        utterance.volume = 0.3
+        speechSynthesizer.speak(utterance)
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {

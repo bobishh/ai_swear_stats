@@ -21,6 +21,7 @@ New installations look in `~/.codex`, `~/.codex-work`, and `~/.claude/projects`.
 ## Explore
 
 - **All threads, model, and period filters** narrow the totals, rankings, chart, and source diagnostics. Select a thread for its statistics.
+- **Sound** sits beside the model and period filters, starts off, and has a preview button. It speaks “Ouch!” once per successful refresh batch containing fresh profanity, with a short cooldown. It uses the macOS English speech voice and stays independent of burst reminders. Initial imports, attached-folder imports, restart backlog, rebuilds, and replayed messages stay silent. New messages wait for the next log refresh (five seconds by default).
 - **Custom dates:** drag across the intensity chart or edit **From / To**. The date and time controls display the selected range and filter the same dashboard data. Choose **All time** to clear both bounds. Drags spanning less than one minute are ignored.
 - **Words / Families** switches between individual recognized words and families grouped by Snowball stem, language, and lexical category. Family labels show the most frequent observed word in the selected data; ties use lexical order. Labels can change with filters while family identity stays stable. Search matches every member word and the stem. Here, “family” names a ranking view, not a semantic taxonomy or a classifier rule. Words is the default view; the selected mode survives restarts.
 - **Ranking search** searches the complete selected ranking and shows the result count.
@@ -80,7 +81,7 @@ Initial imports, rebuilt sources, restart backlog, and replayed records cannot t
 
 | Location | Contents |
 | --- | --- |
-| `~/Library/Application Support/codex_stats/config.json` | Attached folders, refresh interval, reminder preference |
+| `~/Library/Application Support/codex_stats/config.json` | Attached folders, refresh interval, reminder and sound preferences |
 | `~/Library/Application Support/codex_stats/analytics.sqlite` | Cached analytics and burst-policy state |
 | macOS application preferences | Thread sort order |
 

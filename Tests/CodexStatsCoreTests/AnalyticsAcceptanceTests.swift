@@ -153,12 +153,51 @@ struct AnalyticsAcceptanceTests {
         #expect(appended.bytesRead < 1_024)
         #expect(appended.liveMessages.count == 1)
         try fixture.append("chat.jsonl", text: line + "\n")
-        #expect(try await index.refresh(roots: [fixture.logs]).snapshot.messages == 2)
+        let replayed = try await index.refresh(roots: [fixture.logs])
+        #expect(replayed.snapshot.messages == 2)
+        #expect(replayed.liveMessages.isEmpty)
         try fixture.write("chat.jsonl", lines: [generic(id: "3", text: "hello")])
         let rebuilt = try await index.refresh(roots: [fixture.logs])
         #expect(rebuilt.snapshot.messages == 1)
         #expect(rebuilt.snapshot.profanityHits == 0)
         #expect(rebuilt.liveMessages.isEmpty)
+    }
+
+    @Test("Given a stable attached root, when a new file gets a fresh profane message, then it is live once")
+    func newSourceFileContainsLiveMessage() async throws {
+        let fixture = try LogFixture()
+        defer { fixture.remove() }
+        try fixture.write("baseline.jsonl", lines: [generic(id: "baseline", text: "hello")])
+        let index = try AnalyticsIndex(databaseURL: fixture.database)
+        let baseline = Date().addingTimeInterval(-5)
+        #expect(try await index.refresh(roots: [fixture.logs], now: baseline).liveMessages.isEmpty)
+
+        try fixture.write("new-thread.jsonl", lines: [generic(id: "new", text: "fuck")])
+        let result = try await index.refresh(roots: [fixture.logs], now: Date())
+
+        #expect(result.liveMessages.count == 1)
+        #expect(result.liveMessages.first?.words == ["fuck": 1])
+    }
+
+    @Test("Given a new attached folder with recent history, when imported, then it stays quiet")
+    func attachedFolderImportStaysQuiet() async throws {
+        let fixture = try LogFixture()
+        defer { fixture.remove() }
+        try fixture.write("baseline.jsonl", lines: [generic(id: "baseline", text: "hello")])
+        let index = try AnalyticsIndex(databaseURL: fixture.database)
+        let baseline = Date().addingTimeInterval(-5)
+        #expect(try await index.refresh(roots: [fixture.logs], now: baseline).liveMessages.isEmpty)
+
+        let attached = fixture.root.appendingPathComponent("attached", isDirectory: true)
+        try FileManager.default.createDirectory(at: attached, withIntermediateDirectories: true)
+        try fixture.append("baseline.jsonl", text: generic(id: "new-in-baseline", text: "fuck") + "\n")
+        try generic(id: "archive", text: "fuck")
+            .appending("\n")
+            .write(to: attached.appendingPathComponent("archive.jsonl"), atomically: true, encoding: .utf8)
+        let result = try await index.refresh(roots: [fixture.logs, attached], now: Date())
+
+        #expect(result.snapshot.profanityHits == 2)
+        #expect(result.liveMessages.isEmpty)
     }
 
     @Test("Given a prompt split from its context, when the model arrives later, then attribution updates once")
@@ -189,6 +228,7 @@ struct AnalyticsAcceptanceTests {
         let changed = try AnalyticsIndex(databaseURL: fixture.database, classifier: classifier)
         let result = try await changed.refresh(roots: [fixture.logs])
         #expect(result.bytesRead == 0)
+        #expect(result.liveMessages.isEmpty)
         #expect(result.snapshot.profanityHits == 3)
         #expect(result.snapshot.topStems.contains { $0.stem == "долбоеб" && $0.language == "ru" && $0.count == 1 })
         #expect(result.snapshot.topStems.contains { $0.stem == "scheiss" && $0.language == "de" && $0.count == 1 })

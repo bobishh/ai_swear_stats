@@ -18,6 +18,7 @@ final class DashboardState: ObservableObject {
     @Published var notificationRequestPending = false
     @Published var notificationNeedsSettings = false
     @Published var notificationStatus = "Alerts are off. Enable to allow English burst reminders."
+    @Published var soundEnabled = false
     @Published var showFolders = false
 }
 
@@ -29,4 +30,6 @@ struct DashboardActions {
     var addFolder: () -> Void
     var removeFolder: (String) -> Void
     var notifications: (Bool) -> Void
+    var sound: (Bool) -> Void
+    var previewSound: () -> Void
 }

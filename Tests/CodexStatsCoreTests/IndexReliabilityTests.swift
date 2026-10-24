@@ -68,6 +68,7 @@ struct IndexReliabilityTests {
         #expect(config.rootPaths == ["/my/logs"])
         #expect(config.intervalSeconds == 5)
         #expect(config.notificationsEnabled == false)
+        #expect(config.soundEnabled == false)
         #expect(try JSONDecoder().decode(CodexStatsConfig.self, from: JSONEncoder().encode(config)) == config)
     }
 }

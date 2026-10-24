@@ -7,6 +7,7 @@ struct CodexStatsConfigStoreTests {
     func givenMissingConfig_whenStoreLoads_thenDefaultConfigIsCreated() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
         let store = CodexStatsConfigStore(applicationSupportRoot: root)
 
         let loaded = store.load()
@@ -14,6 +15,21 @@ struct CodexStatsConfigStoreTests {
         #expect(loaded.source == .createdDefault)
         #expect(FileManager.default.fileExists(atPath: store.configURL.path))
         #expect(loaded.config.rootPaths == CodexStatsConfig.defaultRootPaths)
+        #expect(!loaded.config.soundEnabled)
+    }
+
+    @Test("Given sound preference, when the config saves and reloads, then the toggle state persists")
+    func soundPreferencePersists() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = CodexStatsConfigStore(applicationSupportRoot: root)
+        var config = store.load().config
+        config.soundEnabled = true
+
+        try store.save(config)
+
+        #expect(store.load().config.soundEnabled)
     }
 
     @Test("Given broken config file, when store loads, then defaults stay available")

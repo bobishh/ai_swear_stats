@@ -113,6 +113,20 @@ struct DashboardView: View {
                     Text("30 days").tag(30)
                     if period == -1 { Text("Custom range").tag(-1) }
                 }.frame(width: 190)
+                Toggle(
+                    "Sound",
+                    isOn: Binding(
+                        get: { state.soundEnabled },
+                        set: { actions.sound($0) }
+                    )
+                )
+                .toggleStyle(.switch).controlSize(.small)
+                .help("Play a short sound when newly indexed profanity appears. Independent of burst reminders.")
+                Button("Preview sound", systemImage: "speaker.wave.2", action: actions.previewSound)
+                    .labelStyle(.iconOnly)
+                    .accessibilityLabel("Preview sound")
+                    .help("Preview the Ouch sound")
+                    .disabled(!state.soundEnabled)
             }
             DateRangePickerRow(from: dateBinding(isStart: true), to: dateBinding(isStart: false))
         }

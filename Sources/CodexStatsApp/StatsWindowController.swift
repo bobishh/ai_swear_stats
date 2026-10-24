@@ -11,7 +11,8 @@ final class StatsWindowController: NSWindowController {
         onRefresh: @escaping () -> Void, onOpenConfig: @escaping () -> Void,
         onFilter: @escaping (AnalyticsFilter) -> Void = { _ in },
         onAddFolder: @escaping () -> Void = {}, onRemoveFolder: @escaping (String) -> Void = { _ in },
-        onNotifications: @escaping (Bool) -> Void = { _ in }
+        onNotifications: @escaping (Bool) -> Void = { _ in }, onSound: @escaping (Bool) -> Void = { _ in },
+        onPreviewSound: @escaping () -> Void = {}
     ) {
         self.onFilter = onFilter
         let window = NSWindow(
@@ -24,7 +25,8 @@ final class StatsWindowController: NSWindowController {
         let actions = DashboardActions(
             refresh: onRefresh, openConfig: onOpenConfig,
             filter: { [weak self] in self?.selectFilter($0) }, addFolder: onAddFolder,
-            removeFolder: onRemoveFolder, notifications: onNotifications)
+            removeFolder: onRemoveFolder, notifications: onNotifications, sound: onSound,
+            previewSound: onPreviewSound)
         window.contentView = NSHostingView(rootView: DashboardView(state: state, actions: actions))
         window.center()
     }

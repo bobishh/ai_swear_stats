@@ -7,6 +7,8 @@ public actor AnalyticsIndex {
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private var activeRoots: [URL]?
+    private var lastRefreshRootPaths: Set<String>?
+    private var lastRefreshAt: Date?
     private var discovered: Set<String>?
     private var folderWarnings: [SourceHealth] = []
     private var cachedFacts: [(source: String, fact: MessageFact)]?
@@ -60,7 +62,10 @@ public actor AnalyticsIndex {
     public func refresh(roots: [URL], now: Date = Date(), progress: (@Sendable (IndexProgress) -> Void)? = nil) throws
         -> IndexUpdate
     {
-        activeRoots = roots.map { $0.standardizedFileURL.resolvingSymlinksInPath() }
+        let resolvedRoots = roots.map { $0.standardizedFileURL.resolvingSymlinksInPath() }
+        let rootPaths = Set(resolvedRoots.map(\.path))
+        let rootsUnchanged = lastRefreshRootPaths == rootPaths
+        activeRoots = resolvedRoots
         let previousWarnings = folderWarnings.map { $0.path + ($0.error ?? "") }
         let files = discover(roots)
         let paths = Set(files.map(\.path))
@@ -75,7 +80,9 @@ public actor AnalyticsIndex {
         for (number, url) in files.enumerated() {
             try Task.checkCancellation()
             do {
-                let result = try ingest(url: url, previous: cursors[url.path], now: now, allowLive: hasRefreshed)
+                let result = try ingest(
+                    url: url, previous: cursors[url.path], now: now,
+                    allowLive: hasRefreshed && rootsUnchanged, previousRefreshAt: lastRefreshAt)
                 bytesRead += result.bytesRead
                 changedSinceProgress = changedSinceProgress || result.bytesRead > 0
                 live.append(contentsOf: result.live)
@@ -94,6 +101,8 @@ public actor AnalyticsIndex {
             [.text(String(now.timeIntervalSince1970))])
         lastIndexedAt = now
         let result = try IndexUpdate(snapshot: snapshot(), bytesRead: bytesRead, liveMessages: live)
+        lastRefreshRootPaths = rootPaths
+        lastRefreshAt = now
         hasRefreshed = true
         return result
     }
@@ -109,12 +118,19 @@ public actor AnalyticsIndex {
         try database.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('burst',?)", [.text(try json(state))])
     }
 
-    private func ingest(url: URL, previous: SourceCursor?, now: Date, allowLive: Bool) throws -> (
+    private func ingest(
+        url: URL, previous: SourceCursor?, now: Date, allowLive: Bool, previousRefreshAt: Date?
+    ) throws -> (
         bytesRead: Int, live: [MessageFact]
     ) {
         let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
         let size = (attributes[.size] as? NSNumber)?.uint64Value ?? 0
         let modified = (attributes[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+        let createdAfterRefresh =
+            (attributes[.creationDate] as? Date).map { createdAt in
+                previousRefreshAt.map { createdAt >= $0 } ?? false
+            } ?? false
+        let newSource = allowLive && previous == nil && createdAfterRefresh
         let identity = "\(attributes[.systemNumber] ?? 0):\(attributes[.systemFileNumber] ?? 0)"
         if let previous, previous.parserVersion == LogAdapter.version, previous.identity == identity,
             previous.size == size, previous.modified == modified,
@@ -157,7 +173,7 @@ public actor AnalyticsIndex {
                     if pending, !cursor.context.pendingIDs.contains(fact.id) {
                         cursor.context.pendingIDs.append(fact.id)
                     }
-                    if allowLive, appending, previous?.health.error == nil, !existing, let time,
+                    if allowLive, appending || newSource, previous?.health.error == nil, !existing, let time,
                         time <= now.addingTimeInterval(5),
                         time >= now.addingTimeInterval(-120)
                     {
