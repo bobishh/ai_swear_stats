@@ -4,6 +4,48 @@ import Testing
 
 struct AnalyticsAcceptanceTests {
     @Test(
+        "Given a scanned source, when a filesystem event reports an appended profane message, then it is ingested live before reconciliation"
+    )
+    func changedPathIngestsAppendedMessageImmediately() async throws {
+        let fixture = try LogFixture()
+        defer { fixture.remove() }
+        try fixture.write("chat.jsonl", lines: [generic(id: "old", text: "hello")])
+        let index = try AnalyticsIndex(databaseURL: fixture.database)
+        _ = try await index.refresh(roots: [fixture.logs])
+        let source = fixture.logs.appendingPathComponent("chat.jsonl")
+        try fixture.append("chat.jsonl", text: generic(id: "live", text: "fuck") + "\n")
+        let live = try await index.ingestChangedPaths([source], roots: [fixture.logs])
+        #expect(live.count == 1)
+        #expect(live.first?.words.keys.sorted() == ["fuck"])
+        #expect(try await index.ingestChangedPaths([source], roots: [fixture.logs]).isEmpty)
+        #expect(try await index.snapshot().messages == 2)
+    }
+
+    @Test(
+        "Given a completed baseline, when a new source gets a changed-file event, then fresh messages are returned and root changes stay quiet"
+    )
+    func changedPathNewSourceAndRootChange() async throws {
+        let fixture = try LogFixture()
+        defer { fixture.remove() }
+        try fixture.write("baseline.jsonl", lines: [generic(id: "old", text: "hello")])
+        let index = try AnalyticsIndex(databaseURL: fixture.database)
+        _ = try await index.refresh(roots: [fixture.logs])
+
+        try fixture.write("new.jsonl", lines: [generic(id: "new", text: "fuck")])
+        let newSource = fixture.logs.appendingPathComponent("new.jsonl")
+        let live = try await index.ingestChangedPaths([newSource], roots: [fixture.logs])
+        #expect(live.count == 1)
+        #expect(live.first?.words.keys.sorted() == ["fuck"])
+
+        try fixture.write("session_index.jsonl", lines: [generic(id: "excluded", text: "fuck")])
+        let excludedSource = fixture.logs.appendingPathComponent("session_index.jsonl")
+        #expect(try await index.ingestChangedPaths([excludedSource], roots: [fixture.logs]).isEmpty)
+
+        let switchedRootResult = try await index.ingestChangedPaths([newSource], roots: [fixture.root])
+        #expect(switchedRootResult.isEmpty)
+    }
+
+    @Test(
         "Given a selected date interval, when filtering analytics, then metrics and navigation include only messages inside it"
     )
     func selectedDateInterval() async throws {

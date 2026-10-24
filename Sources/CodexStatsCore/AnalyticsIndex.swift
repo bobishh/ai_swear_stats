@@ -2,6 +2,7 @@ import Foundation
 
 /// Serializes durable source ingestion independently of the main actor.
 public actor AnalyticsIndex {
+    private let excludedSourceNames: Set<String> = ["session_index.jsonl", "transcription-history.jsonl"]
     private let database: SQLiteDatabase
     private let classifier: WordClassifier
     private let encoder = JSONEncoder()
@@ -107,6 +108,35 @@ public actor AnalyticsIndex {
         return result
     }
 
+    public func ingestChangedPaths(
+        _ urls: Set<URL>, roots: [URL], now: Date = Date(), allowLive: Bool = true
+    ) throws -> [MessageFact] {
+        let resolvedRoots = roots.map { $0.standardizedFileURL.resolvingSymlinksInPath() }
+        let rootPaths = Set(resolvedRoots.map(\.path))
+        guard hasRefreshed, lastRefreshRootPaths == rootPaths else { return [] }
+        activeRoots = resolvedRoots
+        var live: [MessageFact] = []
+        for url in urls.map({ $0.standardizedFileURL.resolvingSymlinksInPath() }).sorted(by: { $0.path < $1.path }) {
+            guard isIndexableSource(url), belongs(url.path, to: resolvedRoots) else { continue }
+            do {
+                let previous = try sourceCursor(path: url.path)
+                let result = try ingest(
+                    url: url, previous: previous, now: now, allowLive: allowLive,
+                    previousRefreshAt: lastRefreshAt)
+                live.append(contentsOf: result.live)
+            } catch is CancellationError { throw CancellationError() } catch {
+                var cursor = (try? sourceCursor(path: url.path)) ?? freshCursor(url: url)
+                cursor.health.error = error.localizedDescription
+                try save(cursor, path: url.path)
+            }
+        }
+        try database.execute(
+            "INSERT OR REPLACE INTO settings(key,value) VALUES('indexed_at',?)",
+            [.text(String(now.timeIntervalSince1970))])
+        lastIndexedAt = now
+        return live
+    }
+
     public func loadBurstState() throws -> BurstPolicy {
         if let json = try database.rows("SELECT value FROM settings WHERE key='burst'").first?["value"] {
             return try decoder.decode(BurstPolicy.self, from: Data(json.utf8))
@@ -116,6 +146,13 @@ public actor AnalyticsIndex {
 
     public func saveBurstState(_ state: BurstPolicy) throws {
         try database.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('burst',?)", [.text(try json(state))])
+    }
+
+    public func evaluateBurstMessages(_ messages: [MessageFact], now: Date = Date()) throws -> String? {
+        var policy = try loadBurstState()
+        let reminder = try policy.evaluate(messages, classifier: classifier, now: now)
+        try saveBurstState(policy)
+        return reminder
     }
 
     private func ingest(
@@ -244,6 +281,12 @@ public actor AnalyticsIndex {
         return cursors
     }
 
+    private func sourceCursor(path: String) throws -> SourceCursor? {
+        guard let json = try database.rows("SELECT cursor FROM sources WHERE path=?", [.text(path)]).first?["cursor"]
+        else { return nil }
+        return try decoder.decode(SourceCursor.self, from: Data(json.utf8))
+    }
+
     private func freshCursor(url: URL) -> SourceCursor {
         SourceCursor(
             parserVersion: LogAdapter.version, identity: "", offset: 0, size: 0, modified: 0,
@@ -254,7 +297,6 @@ public actor AnalyticsIndex {
     private func discover(_ roots: [URL]) -> [URL] {
         var files: Set<URL> = []
         folderWarnings = []
-        let excluded: Set<String> = ["session_index.jsonl", "transcription-history.jsonl"]
         for root in roots {
             guard FileManager.default.isReadableFile(atPath: root.path),
                 let enumerator = FileManager.default.enumerator(
@@ -264,14 +306,16 @@ public actor AnalyticsIndex {
                 folderWarnings.append(SourceHealth(path: root.path, error: "Folder unavailable; showing cached data"))
                 continue
             }
-            for case let url as URL in enumerator
-            where url.pathExtension.lowercased() == "jsonl" && !excluded.contains(url.lastPathComponent) {
-                if (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
-                    files.insert(url.standardizedFileURL.resolvingSymlinksInPath())
-                }
+            for case let url as URL in enumerator where isIndexableSource(url) {
+                files.insert(url.standardizedFileURL.resolvingSymlinksInPath())
             }
         }
         return files.sorted { $0.path < $1.path }
+    }
+
+    private func isIndexableSource(_ url: URL) -> Bool {
+        url.pathExtension.lowercased() == "jsonl" && !excludedSourceNames.contains(url.lastPathComponent)
+            && (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
     }
 
     private func belongs(_ path: String, to roots: [URL]?) -> Bool {

@@ -21,7 +21,7 @@ New installations look in `~/.codex`, `~/.codex-work`, and `~/.claude/projects`.
 ## Explore
 
 - **All threads, model, and period filters** narrow the totals, rankings, chart, and source diagnostics. Select a thread for its statistics.
-- **Sound** sits beside the model and period filters, starts off, and has a preview button. It speaks “Ouch!” once per successful refresh batch containing fresh profanity, with a short cooldown. It uses the macOS English speech voice and stays independent of burst reminders. Initial imports, attached-folder imports, restart backlog, rebuilds, and replayed messages stay silent. New messages wait for the next log refresh (five seconds by default).
+- **Sound** sits beside the model and period filters, starts off, and has a preview button. It speaks “Ouch!” once per coalesced filesystem-change batch containing fresh profanity, with a short cooldown. It uses the macOS English speech voice and stays independent of burst reminders. Initial imports, attached-folder imports, restart backlog, rebuilds, and replayed messages stay silent. A five-second full reconciliation catches missed filesystem events.
 - **Custom dates:** drag across the intensity chart or edit **From / To**. The date and time controls display the selected range and filter the same dashboard data. Choose **All time** to clear both bounds. Drags spanning less than one minute are ignored.
 - **Words / Families** switches between individual recognized words and families grouped by Snowball stem, language, and lexical category. Family labels show the most frequent observed word in the selected data; ties use lexical order. Labels can change with filters while family identity stays stable. Search matches every member word and the stem. Here, “family” names a ranking view, not a semantic taxonomy or a classifier rule. Words is the default view; the selected mode survives restarts.
 - **Ranking search** searches the complete selected ranking and shows the result count.
@@ -63,7 +63,7 @@ Other export schemas need an adapter or conversion to generic JSONL. Fork ancest
 
 ## Indexing and classification
 
-The first import reads the archive. Subsequent refreshes check file metadata and read only appended complete lines. Partial final lines wait for completion; replacing or truncating a file rebuilds that source. Parser revisions may require reimporting affected sources.
+The first import reads the archive. Recursive filesystem events coalesce changed JSONL paths and send them through the same index ingestion path; a periodic full reconciliation catches missed events. Subsequent reads check file metadata and read only appended complete lines. Partial final lines wait for completion; replacing or truncating a file rebuilds that source. Parser revisions may require reimporting affected sources.
 
 A local SQLite index stores word frequencies, short thread labels, timestamps, provider/model/project metadata, source health, and byte offsets. Restarting uses cached records. Updating the classifier reuses stored word frequencies without rereading logs. Source logs remain read-only.
 

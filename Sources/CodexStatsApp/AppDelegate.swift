@@ -13,6 +13,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var timer: Timer?
     private var refreshTask: Task<Void, Never>?
+    private let fileWatcher = RootFileWatcher()
+    private var watchedRootPaths: [String] = []
+    private var changedPaths: Set<URL> = []
+    private var changedPathTask: Task<Void, Never>?
+    private var fullScanPending = false
+    private var hasCompletedInitialScan = false
+    private var suppressChangedPathSound = true
     private var notifications: NotificationService?
     private let speechSynthesizer = AVSpeechSynthesizer()
     private var soundPolicy = LiveSoundPolicy()
@@ -56,6 +63,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if config.notificationsEnabled { setNotifications(true) }
         installMenus()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(rootFilesChanged(_:)), name: RootFileWatcher.eventName, object: nil)
         showDashboard()
         updateDashboard()
         initializeIndex()
@@ -72,6 +81,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         timer?.invalidate()
         refreshTask?.cancel()
+        changedPathTask?.cancel()
+        fileWatcher.stop()
+        NotificationCenter.default.removeObserver(self)
         notificationTask?.cancel()
     }
 
@@ -86,6 +98,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.index = index
                 snapshot = try await index.snapshot(roots: config.resolvedRootURLs())
                 updateDashboard()
+                let roots = config.resolvedRootURLs()
+                watchedRootPaths = roots.map { $0.standardizedFileURL.resolvingSymlinksInPath().path }.sorted()
+                fileWatcher.watch(roots)
                 refreshScan()
             } catch { showError(error) }
         }
@@ -93,14 +108,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func refreshScan() {
         guard !isScanning, let index else { return }
+        fullScanPending = false
+        let roots = config.resolvedRootURLs()
+        let rootPaths = roots.map { $0.standardizedFileURL.resolvingSymlinksInPath().path }.sorted()
+        let rootsChanged = rootPaths != watchedRootPaths
+        if rootsChanged {
+            fileWatcher.stop()
+            changedPaths.removeAll()
+            watchedRootPaths = rootPaths
+            fileWatcher.watch(roots)
+        }
+        suppressChangedPathSound = rootsChanged || !hasCompletedInitialScan
         isScanning = true
         scanError = nil
         dashboard?.state.files = 0
         dashboard?.state.totalFiles = 0
         updateDashboard()
-        let roots = config.resolvedRootURLs()
         refreshTask = Task {
-            defer { isScanning = false; updateDashboard() }
+            defer {
+                isScanning = false
+                fileWatcher.watch(config.resolvedRootURLs())
+                updateDashboard()
+                if fullScanPending {
+                    fullScanPending = false
+                    refreshScan()
+                } else {
+                    scheduleChangedPathDrain()
+                }
+            }
             do {
                 let result = try await index.refresh(roots: roots) { [weak self] progress in
                     guard progress.files.isMultiple(of: 10) || progress.files == progress.total else { return }
@@ -115,15 +150,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
                 let rootsStillCurrent = roots == config.resolvedRootURLs()
+                if !rootsStillCurrent { fullScanPending = true }
+                hasCompletedInitialScan = true
                 snapshot =
                     rootsStillCurrent
                     ? result.snapshot : try await index.snapshot(roots: config.resolvedRootURLs())
                 dashboard?.state.bytesRead = result.bytesRead
-                if rootsStillCurrent { playSoundForLiveProfanity(result.liveMessages) }
+                if rootsStillCurrent {
+                    try await handleLiveMessages(result.liveMessages, index: index, roots: roots)
+                }
                 if dashboard?.state.filter != AnalyticsFilter() { await refreshFilteredSnapshot() }
-                try await evaluateNotifications(result.liveMessages, index: index)
             } catch is CancellationError { return } catch { showError(error) }
         }
+    }
+
+    @objc private func rootFilesChanged(_ notification: Notification) {
+        guard let change = notification.object as? RootFileChange else { return }
+        if change.requiresFullScan {
+            fullScanPending = true
+            if !isScanning { refreshScan() }
+            return
+        }
+        changedPaths.formUnion(change.paths.filter { $0.pathExtension.lowercased() == "jsonl" })
+        scheduleChangedPathDrain()
+    }
+
+    private func scheduleChangedPathDrain() {
+        guard changedPathTask == nil, !changedPaths.isEmpty else { return }
+        changedPathTask = Task {
+            do { try await Task.sleep(for: .milliseconds(200)) } catch { changedPathTask = nil; return }
+            while !Task.isCancelled, !isScanning, !changedPaths.isEmpty, let index {
+                let paths = changedPaths
+                changedPaths.removeAll()
+                let roots = config.resolvedRootURLs()
+                do {
+                    let live = try await index.ingestChangedPaths(
+                        paths, roots: roots, allowLive: !suppressChangedPathSound)
+                    try await handleLiveMessages(live, index: index, roots: roots)
+                } catch is CancellationError { break } catch { showError(error) }
+            }
+            changedPathTask = nil
+            if !changedPaths.isEmpty, !isScanning { scheduleChangedPathDrain() }
+        }
+    }
+
+    private func handleLiveMessages(_ messages: [MessageFact], index: AnalyticsIndex, roots: [URL]) async throws {
+        guard roots == config.resolvedRootURLs() else { return }
+        try await LiveMessageFeedback.deliver(
+            messages,
+            playSound: { [weak self] in self?.playSoundForLiveProfanity($0) },
+            evaluateNotifications: { [weak self] in
+                guard let self else { return }
+                try await self.evaluateNotifications($0, index: index)
+            })
     }
 
     private func applyFilter(_ filter: AnalyticsFilter) {
@@ -230,10 +309,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func evaluateNotifications(_ messages: [MessageFact], index: AnalyticsIndex) async throws {
-        guard config.notificationsEnabled, let classifier else { return }
-        var policy = try await index.loadBurstState()
-        let reminder = try policy.evaluate(messages, classifier: classifier)
-        try await index.saveBurstState(policy)
+        guard config.notificationsEnabled else { return }
+        let reminder = try await index.evaluateBurstMessages(messages)
         if let reminder {
             let service = notifications ?? NotificationService()
             notifications = service
