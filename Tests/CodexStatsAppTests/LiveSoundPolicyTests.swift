@@ -50,6 +50,19 @@ struct LiveSoundPolicyTests {
         #expect(profanity)
     }
 
+    @Test("Given newly indexed хули and хуяли messages, when live sound policy checks them, then exact profanity plays")
+    func newRussianTermsTriggerLiveSound() throws {
+        let classifier = try WordClassifier()
+        let now = Date(timeIntervalSince1970: 10_000)
+        let batch = [
+            try fact("new-huli", words: ["хули": 1]),
+            try fact("new-huyali", words: ["хуяли": 1]),
+        ]
+        var policy = LiveSoundPolicy()
+        let shouldPlay = policy.shouldPlay(batch, enabled: true, classifier: classifier, now: now)
+        #expect(shouldPlay)
+    }
+
     private func fact(_ id: String, words: [String: Int]) throws -> MessageFact {
         let json = try JSONSerialization.data(withJSONObject: [
             "id": id, "threadID": "thread", "title": "test", "provider": "generic", "model": NSNull(),

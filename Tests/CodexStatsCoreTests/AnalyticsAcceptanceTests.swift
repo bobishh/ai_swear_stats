@@ -46,6 +46,82 @@ struct AnalyticsAcceptanceTests {
     }
 
     @Test(
+        "Given realtime user and assistant segments plus generated delegation wrappers, when indexed, then only canonical user speech counts"
+    )
+    func realtimeDelegationWrappersAreIgnored() async throws {
+        let fixture = try LogFixture()
+        defer { fixture.remove() }
+        try fixture.write(
+            "realtime.jsonl",
+            lines: [
+                #"{"type":"realtime_item","timestamp":"2026-10-24T12:00:00Z","payload":{"id":"user-1","type":"transcript_segment","role":"user","text":"fuck"}}"#,
+                #"{"type":"realtime_item","timestamp":"2026-10-24T12:00:01Z","payload":{"id":"assistant-1","type":"transcript_segment","role":"assistant","text":"shit"}}"#,
+                #"{"type":"response_item","payload":{"id":"delegate-1","role":"user","content":[{"type":"input_text","text":"<realtime_delegation>\n<input>fuck</input>\n<transcript_delta>user: fuck\nassistant: shit</transcript_delta>\n</realtime_delegation>"}]}}"#,
+                #"{"type":"response_item","payload":{"id":"delegate-2","role":"user","content":[{"type":"input_text","text":" <realtime_delegation>\n<input>fuck</input>\n<transcript_delta>user: fuck\nassistant: shit</transcript_delta>\n</realtime_delegation>\ntail_flush"}]}}"#,
+                #"{"type":"response_item","payload":{"id":"quote-1","role":"user","content":[{"type":"input_text","text":"I am quoting <realtime_delegation> as text: fuck"}]}}"#,
+            ])
+        let index = try AnalyticsIndex(databaseURL: fixture.database)
+        let result = try await index.refresh(roots: [fixture.logs])
+        #expect(result.snapshot.messages == 2)
+        #expect(result.snapshot.profanityHits == 2)
+        #expect(result.liveMessages.isEmpty)
+    }
+
+    @Test(
+        "Given stored legacy delegation tokens, when upgrading the parser, then only candidate sources reread and archive stays quiet"
+    )
+    func parserUpgradeRebuildsOnlyDelegationSources() async throws {
+        let fixture = try LogFixture()
+        defer { fixture.remove() }
+        try fixture.write(
+            "realtime.jsonl",
+            lines: [
+                #"{"type":"realtime_item","timestamp":"2026-10-24T12:00:00Z","payload":{"id":"user-1","type":"transcript_segment","role":"user","text":"fuck"}}"#,
+                #"{"type":"response_item","payload":{"id":"delegate-1","role":"user","content":[{"type":"input_text","text":"<realtime_delegation>\n<input>fuck</input>\n<transcript_delta>assistant: shit</transcript_delta>\n</realtime_delegation>"}]}}"#,
+            ])
+        try fixture.write("unrelated.jsonl", lines: [generic(id: "safe", text: "shit")])
+        let candidateURL = fixture.logs.appendingPathComponent("realtime.jsonl")
+            .standardizedFileURL.resolvingSymlinksInPath()
+        let candidateSize = try Data(contentsOf: candidateURL).count
+        let index = try AnalyticsIndex(databaseURL: fixture.database)
+        _ = try await index.refresh(roots: [fixture.logs])
+
+        let database = try SQLiteDatabase(url: fixture.database)
+        for row in try database.rows("SELECT path,cursor FROM sources") {
+            guard let path = row["path"], let cursorJSON = row["cursor"] else {
+                Issue.record("Missing source cursor")
+                continue
+            }
+            var cursor = try JSONDecoder().decode(SourceCursor.self, from: Data(cursorJSON.utf8))
+            cursor.parserVersion = 3
+            let encoded = try JSONEncoder().encode(cursor)
+            guard let encodedJSON = String(data: encoded, encoding: .utf8) else {
+                Issue.record("Could not encode source cursor")
+                continue
+            }
+            try database.execute("UPDATE sources SET cursor=? WHERE path=?", [.text(encodedJSON), .text(path)])
+        }
+        let staleFact = try JSONSerialization.data(withJSONObject: [
+            "id": "legacy-wrapper", "threadID": "codex:legacy", "title": "legacy", "provider": "codex",
+            "model": NSNull(), "effort": NSNull(), "timestamp": NSNull(), "project": NSNull(),
+            "words": ["fuck": 1, "realtime": 1, "delegation": 1, "shit": 2],
+        ])
+        guard let staleJSON = String(data: staleFact, encoding: .utf8) else {
+            Issue.record("Could not encode stale synthetic fact")
+            return
+        }
+        try database.execute(
+            "INSERT OR REPLACE INTO messages(source,id,fact) VALUES(?,?,?)",
+            [.text(candidateURL.path), .text("codex:legacy:wrapper"), .text(staleJSON)])
+
+        let upgraded = try await index.refresh(roots: [fixture.logs])
+        #expect(upgraded.bytesRead == candidateSize)
+        #expect(upgraded.liveMessages.isEmpty)
+        #expect(upgraded.snapshot.messages == 2)
+        #expect(upgraded.snapshot.profanityHits == 2)
+    }
+
+    @Test(
         "Given a selected date interval, when filtering analytics, then metrics and navigation include only messages inside it"
     )
     func selectedDateInterval() async throws {
@@ -263,15 +339,16 @@ struct AnalyticsAcceptanceTests {
     func reclassification() async throws {
         let fixture = try LogFixture()
         defer { fixture.remove() }
-        try fixture.write("chat.jsonl", lines: [generic(id: "1", text: "toaster долбоёб Scheiße")])
+        try fixture.write(
+            "chat.jsonl", lines: [generic(id: "1", text: "toaster долбоёб Scheiße хули хуяли хулиган хула")])
         let first = try AnalyticsIndex(databaseURL: fixture.database)
-        #expect(try await first.refresh(roots: [fixture.logs]).snapshot.profanityHits == 2)
+        #expect(try await first.refresh(roots: [fixture.logs]).snapshot.profanityHits == 4)
         let classifier = try WordClassifier(extraWords: ["toaster": "fuck"])
         let changed = try AnalyticsIndex(databaseURL: fixture.database, classifier: classifier)
         let result = try await changed.refresh(roots: [fixture.logs])
         #expect(result.bytesRead == 0)
         #expect(result.liveMessages.isEmpty)
-        #expect(result.snapshot.profanityHits == 3)
+        #expect(result.snapshot.profanityHits == 5)
         #expect(result.snapshot.topStems.contains { $0.stem == "долбоеб" && $0.language == "ru" && $0.count == 1 })
         #expect(result.snapshot.topStems.contains { $0.stem == "scheiss" && $0.language == "de" && $0.count == 1 })
     }

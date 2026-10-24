@@ -10,7 +10,7 @@ enum ParsedEvent {
 
 /// Converts supported JSONL representations to canonical user-message events.
 struct LogAdapter {
-    static let version = 3
+    static let version = 4
     private let decoder = JSONDecoder()
 
     func decode(_ data: Data, context: inout ParserContext) throws -> ParsedEvent {
@@ -89,7 +89,7 @@ private enum UserTextFilter {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return [
             "# AGENTS.md instructions", "<user_instructions>", "<environment_context>",
-            "<external_codex_apps_open_page>", "<inter_agent",
+            "<external_codex_apps_open_page>", "<inter_agent", "<realtime_delegation>",
             "<turn_aborted>", "This session is being continued from a previous conversation",
             "## Referenced ChatGPT conversation:", "<recommended_plugins>",
         ].contains { trimmed.hasPrefix($0) }

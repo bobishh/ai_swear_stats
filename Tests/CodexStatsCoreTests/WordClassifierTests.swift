@@ -17,6 +17,21 @@ struct WordClassifierTests {
         #expect(classifier.words(in: "бл*ть, fuck! fuck")["fuck"] == 2)
     }
 
+    @Test(
+        "Given the exact Russian tokens хули and хуяли, when classified, then casing normalizes and innocent neighbors stay clear"
+    )
+    func explicitRussianTokens() throws {
+        let classifier = try WordClassifier()
+        for word in ["хули", "хуяли", "ХУЛИ", "ХУЯЛИ", "Хуяли"] {
+            let match = classifier.classify(word)
+            #expect(match?.category == .profanity, "Missing: \(word)")
+            #expect(match?.family == "хуй", "Legacy word metadata changed: \(word)")
+        }
+        for word in ["хулиган", "хулиганство", "хулиганить", "хула"] {
+            #expect(classifier.classify(word) == nil, "False positive: \(word)")
+        }
+    }
+
     @Test("Given Russian declensions of долбоеб, when classified, then each form counts as profanity")
     func dolboebDeclensions() throws {
         let classifier = try WordClassifier()
@@ -101,7 +116,7 @@ struct WordClassifierTests {
     func packIntegrity() throws {
         let url = try #require(ResourceBundle.bundle.url(forResource: "lexicon", withExtension: "json"))
         let lexicon = try JSONDecoder().decode(TestLexicon.self, from: Data(contentsOf: url))
-        #expect(lexicon.version == 4)
+        #expect(lexicon.version == 5)
         #expect(lexicon.sources.count == 1)
         #expect(lexicon.sources.first?.id == "LDNOOBW")
         #expect(

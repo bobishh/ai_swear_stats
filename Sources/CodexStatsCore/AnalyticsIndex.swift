@@ -13,6 +13,7 @@ public actor AnalyticsIndex {
     private var discovered: Set<String>?
     private var folderWarnings: [SourceHealth] = []
     private var cachedFacts: [(source: String, fact: MessageFact)]?
+    private var cachedRealtimeDelegationSources: Set<String>?
     private var hasRefreshed = false
     private var snapshots: [SnapshotKey: AnalyticsSnapshot] = [:]
     private var lastIndexedAt: Date?
@@ -75,14 +76,32 @@ public actor AnalyticsIndex {
         }
         discovered = paths
         let cursors = try sourceCursors()
+        // Parser v3 already tokenized every wrapper marker, so v3→v4 can identify the affected
+        // sources from stored facts. Other parser transitions may have different semantics and
+        // must use the normal rebuild path.
+        var parserUpgradeCandidates = Set<String>()
+        if LogAdapter.version == 4, cursors.values.contains(where: { $0.parserVersion == 3 }) {
+            if cachedRealtimeDelegationSources == nil {
+                cachedRealtimeDelegationSources = try realtimeDelegationSources()
+            }
+            parserUpgradeCandidates = cachedRealtimeDelegationSources ?? []
+        }
         var bytesRead = 0
         var live: [MessageFact] = []
         var changedSinceProgress = false
         for (number, url) in files.enumerated() {
             try Task.checkCancellation()
             do {
+                var previous = cursors[url.path]
+                if LogAdapter.version == 4, var cursor = previous, cursor.parserVersion == 3,
+                    !parserUpgradeCandidates.contains(url.path)
+                {
+                    cursor.parserVersion = LogAdapter.version
+                    try save(cursor, path: url.path)
+                    previous = cursor
+                }
                 let result = try ingest(
-                    url: url, previous: cursors[url.path], now: now,
+                    url: url, previous: previous, now: now,
                     allowLive: hasRefreshed && rootsUnchanged, previousRefreshAt: lastRefreshAt)
                 bytesRead += result.bytesRead
                 changedSinceProgress = changedSinceProgress || result.bytesRead > 0
@@ -279,6 +298,15 @@ public actor AnalyticsIndex {
             }
         }
         return cursors
+    }
+
+    private func realtimeDelegationSources() throws -> Set<String> {
+        // Parser v3 stored every token in each fact, including both marker tokens from this wrapper.
+        // Their absence proves that the source cannot contain a counted delegation wrapper.
+        Set(
+            try database.rows(
+                "SELECT DISTINCT source FROM messages WHERE instr(fact,'\"realtime\"')>0 AND instr(fact,'\"delegation\"')>0"
+            ).compactMap { $0["source"] })
     }
 
     private func sourceCursor(path: String) throws -> SourceCursor? {
