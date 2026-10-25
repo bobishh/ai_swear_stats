@@ -17,7 +17,7 @@ final class DashboardState: ObservableObject {
     @Published var notificationsEnabled = false
     @Published var notificationRequestPending = false
     @Published var notificationNeedsSettings = false
-    @Published var notificationStatus = "Alerts are off. Enable to allow English burst reminders."
+    @Published var notificationStatus = ""
     @Published var soundEnabled = false
     @Published var showFolders = false
 }

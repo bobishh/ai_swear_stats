@@ -31,7 +31,6 @@ struct DashboardView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Swear Stats", systemImage: "waveform.path").font(.title2.bold()).padding(.top, 12)
-            Text("Local AI conversation analytics").font(.caption).foregroundStyle(.secondary)
             Button("All threads") {
                 var filter = state.filter
                 filter.thread = nil
@@ -65,7 +64,9 @@ struct DashboardView: View {
             )
             .toggleStyle(.switch).controlSize(.small)
             .disabled(state.notificationRequestPending)
-            Text(state.notificationStatus).font(.caption).foregroundStyle(.secondary)
+            if !state.notificationStatus.isEmpty {
+                Text(state.notificationStatus).font(.caption).foregroundStyle(.secondary)
+            }
             if state.notificationNeedsSettings {
                 Button("Notification Settings…") {
                     if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
@@ -79,11 +80,7 @@ struct DashboardView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Watch your language.").font(.largeTitle.bold())
-                    Text("Across your AI conversations. Everything stays on this Mac.")
-                        .font(.callout).foregroundStyle(.secondary)
-                }
+                Text("Overview").font(.largeTitle.bold())
                 Spacer()
                 Button("Refresh", systemImage: "arrow.clockwise", action: actions.refresh)
                     .disabled(state.isScanning).keyboardShortcut("r")
@@ -121,7 +118,6 @@ struct DashboardView: View {
                     )
                 )
                 .toggleStyle(.switch).controlSize(.small)
-                .help("Play a short sound when newly indexed profanity appears. Independent of burst reminders.")
                 Button("Preview sound", systemImage: "speaker.wave.2", action: actions.previewSound)
                     .labelStyle(.iconOnly)
                     .accessibilityLabel("Preview sound")
@@ -142,11 +138,6 @@ struct DashboardView: View {
                         : "Indexing \(state.files)/\(state.totalFiles) files · \(ByteCountFormatter.string(fromByteCount: Int64(state.bytesRead), countStyle: .file)) read"
                 )
             }.font(.callout)
-        } else {
-            Text(
-                "Last refresh read \(ByteCountFormatter.string(fromByteCount: Int64(state.bytesRead), countStyle: .file)) from logs. Unchanged files are skipped."
-            )
-            .font(.caption).foregroundStyle(.secondary)
         }
         if let error = state.error {
             Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red).textSelection(.enabled)
@@ -169,12 +160,12 @@ struct DashboardView: View {
     private var intensity: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Lexical intensity").font(.headline)
-            Text("Profanities per second · \(timelineBucketDescription) buckets · \(selectedRangeLabel)")
+            Text("Profanities per second · \(timelineBucketDescription) buckets")
                 .font(.caption).foregroundStyle(.secondary)
             if state.snapshot.timeline.isEmpty {
                 Text(
                     state.isScanning
-                        ? "Time series will appear as logs are indexed." : "No timestamped messages in this selection."
+                        ? "Indexing…" : "No timestamped messages"
                 )
                 .foregroundStyle(.secondary).frame(maxWidth: .infinity).frame(height: 150)
             } else {
@@ -219,7 +210,7 @@ struct DashboardView: View {
                 }
             }
             if state.snapshot.missingTimestamps > 0 {
-                Text("\(state.snapshot.missingTimestamps) messages have no timestamp and are excluded from the chart.")
+                Text("\(state.snapshot.missingTimestamps) messages without timestamps")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -231,27 +222,6 @@ struct DashboardView: View {
         if seconds == 3_600 { return "one-hour" }
         let days = Int(seconds / 86_400)
         return days == 1 ? "one-day" : "\(days)-day"
-    }
-
-    private var periodSelection: Int {
-        period
-    }
-
-    private var selectedRangeLabel: String {
-        if let dragRange {
-            return
-                "\(dragRange.lowerBound.formatted(date: .abbreviated, time: .shortened)) – \(dragRange.upperBound.formatted(date: .abbreviated, time: .shortened))"
-        }
-        if let since = state.filter.since, let until = state.filter.until {
-            return
-                "\(since.formatted(date: .abbreviated, time: .shortened)) – \(until.formatted(date: .abbreviated, time: .shortened))"
-        }
-        switch periodSelection {
-        case 1: return "last 24 hours"
-        case 7: return "last 7 days"
-        case 30: return "last 30 days"
-        default: return "full selected history"
-        }
     }
 
     private func applyPeriod(_ value: Int) {

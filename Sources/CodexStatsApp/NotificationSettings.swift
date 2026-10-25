@@ -18,7 +18,7 @@ final class NotificationSettings {
         state.notificationsEnabled = enabled
         state.notificationNeedsSettings = false
         state.notificationRequestPending = enabled
-        state.notificationStatus = enabled ? "Waiting for macOS notification permission…" : "Burst reminders are off."
+        state.notificationStatus = enabled ? "Waiting for macOS notification permission…" : ""
         defer { state.notificationRequestPending = false }
         do {
             let allowed = enabled ? try await authorize() : false
@@ -29,7 +29,7 @@ final class NotificationSettings {
             if enabled {
                 state.notificationStatus =
                     allowed
-                    ? "English reminders · 5 hits / 2 min · 15 min cooldown."
+                    ? ""
                     : "Blocked by macOS. Allow Swear Stats in Notification Settings, then try again."
             }
         } catch {

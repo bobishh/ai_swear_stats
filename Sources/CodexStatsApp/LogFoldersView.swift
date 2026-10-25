@@ -7,8 +7,6 @@ struct LogFoldersView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Attached log folders").font(.title2.bold())
-            Text("Add folders containing Codex, Claude Code, or generic JSONL logs. Subfolders are included.")
-                .foregroundStyle(.secondary)
             if state.roots.isEmpty { Text("No folders attached yet.") }
             ForEach(state.roots, id: \.self) { path in
                 HStack {

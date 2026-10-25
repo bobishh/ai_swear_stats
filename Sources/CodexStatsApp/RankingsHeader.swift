@@ -50,10 +50,6 @@ struct RankingsHeader: View {
                     .accessibilityIdentifier("rankingSearch")
                 Text(resultStatus).font(.caption).foregroundStyle(.secondary).fixedSize()
             }
-            if stems {
-                Text("Related word forms grouped by language and category. Labels use the most frequent form.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
             HStack(spacing: 16) {
                 ForEach(LexicalCategory.allCases, id: \.self) { category in
                     Text("\(category.rawValue): \(categories[category, default: 0].formatted())")

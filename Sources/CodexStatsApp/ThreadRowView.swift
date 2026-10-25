@@ -34,7 +34,7 @@ struct ThreadRowView: View {
             RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 2)
         }
         .contentShape(RoundedRectangle(cornerRadius: 8))
-        .help("\(thread.profaneMessages) of \(thread.messages) messages contain profanity. Short threads stay cooler.")
+        .help("\(thread.profaneMessages) of \(thread.messages) messages contain profanity.")
         .accessibilityElement(children: .combine)
         .accessibilityValue(selected ? "Selected" : "")
     }
@@ -57,8 +57,7 @@ struct ThreadHeatLegend: View {
                 colors: [0.0, 1.0 / 3, 2.0 / 3, 1.0].map(ThreadHeatScale.color),
                 startPoint: .leading, endPoint: .trailing
             ).frame(width: 36, height: 5).clipShape(Capsule())
-            Text("Profanity · short threads stay cooler").font(.caption2).foregroundStyle(.secondary)
+            Text("Profanity").font(.caption2).foregroundStyle(.secondary)
         }
-        .help("Percentage of messages containing profanity. Color also accounts for conversation size.")
     }
 }

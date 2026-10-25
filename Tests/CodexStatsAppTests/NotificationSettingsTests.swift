@@ -8,6 +8,7 @@ struct NotificationSettingsTests {
     @Test("Given a pending permission request, when statistics refresh, then reminder state stays pending until saved")
     func permissionPending() async throws {
         let state = DashboardState()
+        #expect(state.notificationStatus.isEmpty)
         var complete: CheckedContinuation<Bool, any Error>?
         var saved: [Bool] = []
         let settings = NotificationSettings(
@@ -26,9 +27,11 @@ struct NotificationSettingsTests {
         await request.value
         #expect(state.notificationsEnabled)
         #expect(!state.notificationRequestPending)
+        #expect(state.notificationStatus.isEmpty)
         #expect(saved == [true])
         await settings.setEnabled(false)
         #expect(!state.notificationsEnabled)
+        #expect(state.notificationStatus.isEmpty)
         #expect(saved == [true, false])
     }
 
@@ -40,6 +43,7 @@ struct NotificationSettingsTests {
         #expect(!state.notificationsEnabled)
         #expect(state.notificationNeedsSettings)
         #expect(state.notificationStatus.contains("macOS"))
+        #expect(state.notificationStatus.contains("Notification Settings"))
         state.isScanning = true
         state.error = nil
         #expect(state.notificationNeedsSettings)
