@@ -304,12 +304,17 @@ public actor AnalyticsIndex {
 
     private func discover(_ roots: [URL]) -> [URL] {
         var files: Set<URL> = []
+        var inaccessibleFolders: Set<String> = []
         folderWarnings = []
         for root in roots {
             guard FileManager.default.isReadableFile(atPath: root.path),
                 let enumerator = FileManager.default.enumerator(
                     at: root, includingPropertiesForKeys: [.isRegularFileKey],
-                    options: [.skipsHiddenFiles, .skipsPackageDescendants], errorHandler: { _, _ in false })
+                    options: [.skipsHiddenFiles, .skipsPackageDescendants],
+                    errorHandler: { url, _ in
+                        inaccessibleFolders.insert(url.path)
+                        return true
+                    })
             else {
                 folderWarnings.append(SourceHealth(path: root.path, error: "Folder unavailable; showing cached data"))
                 continue
@@ -318,6 +323,10 @@ public actor AnalyticsIndex {
                 files.insert(url.standardizedFileURL.resolvingSymlinksInPath())
             }
         }
+        folderWarnings.append(
+            contentsOf: inaccessibleFolders.sorted().map {
+                SourceHealth(path: $0, error: "Folder unavailable; showing cached data")
+            })
         return files.sorted { $0.path < $1.path }
     }
 

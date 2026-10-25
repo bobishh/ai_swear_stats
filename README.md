@@ -13,7 +13,9 @@
 
 ## Get started
 
-Requires **macOS 13+** and **Swift 6.3+ with the macOS SDK**. Build from source:
+Download [Swear Stats v0.0.1 for Apple Silicon](https://github.com/bobishh/ai_swear_stats/releases/tag/v0.0.1), unzip it, and move **Swear Stats.app** to Applications. Requires **macOS 13+**. This first build is locally signed and is not notarized by Apple.
+
+To build from source, install **Swift 6.3+ with the macOS SDK**, then run:
 
 ```sh
 git clone https://github.com/bobishh/ai_swear_stats.git
@@ -66,3 +68,7 @@ Checks include Swift tests, formatting, SwiftLint, launcher syntax, and OpenSpec
 For a missed word or false positive, include the word, language, and a small synthetic example. For an unsupported log format, include a minimal sanitized JSONL record. Keep private conversations and local databases out of issues and pull requests.
 
 Read the [Swift guidelines](docs/swift-guidelines.md) and [analytics design](openspec/changes/ai-agnostic-incremental-analytics/design.md) before changing the implementation. `CodexStatsCore` owns parsing, classification, indexing, and analytics; `CodexStatsApp` owns the native dashboard and feedback.
+
+## License
+
+Project code is [MIT licensed](LICENSE). Bundled dictionaries and Snowball retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).

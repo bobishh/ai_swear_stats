@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")"
+version=$(cat VERSION)
 swift build -c release --product codex_stats_app
 app="$PWD/.build/Swear Stats.app"
 mkdir -p "$app/Contents/MacOS"
@@ -11,7 +12,8 @@ if [ -d "$app/codex_stats_CodexStatsCore.bundle" ]; then
     mv "$app/codex_stats_CodexStatsCore.bundle" "$app/Contents/Resources/"
 fi
 ditto .build/release/codex_stats_CodexStatsCore.bundle "$app/Contents/Resources/codex_stats_CodexStatsCore.bundle"
-cat > "$app/Contents/Info.plist" <<'PLIST'
+cp LICENSE THIRD_PARTY_NOTICES.md "$app/Contents/Resources/"
+cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -21,7 +23,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleExecutable</key><string>codex_stats_app</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleVersion</key><string>1</string>
-<key>CFBundleShortVersionString</key><string>1.0</string>
+<key>CFBundleShortVersionString</key><string>$version</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 </dict></plist>
 PLIST
