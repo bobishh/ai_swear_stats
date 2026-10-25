@@ -85,43 +85,54 @@ struct DashboardView: View {
                 SyncIndicatorView(state: state)
             }
             HStack(alignment: .center, spacing: 12) {
-                Picker(
-                    "Model",
-                    selection: Binding(
-                        get: { state.filter.model ?? "" },
-                        set: { model in
-                            var filter = state.filter
-                            filter.model = model.isEmpty ? nil : model
-                            filter.thread = nil
-                            actions.filter(filter)
-                        })
-                ) {
-                    Text("All models").tag("")
-                    ForEach(state.models) { Text($0.id).tag($0.id) }
-                }.frame(maxWidth: 300)
-                Picker(
-                    "Period",
-                    selection: Binding(get: { period }, set: { value in applyPeriod(value) })
-                ) {
-                    Text("All time").tag(0)
-                    Text("24 hours").tag(1)
-                    Text("7 days").tag(7)
-                    Text("30 days").tag(30)
-                    if period == -1 { Text("Custom range").tag(-1) }
-                }.frame(width: 190)
-                Toggle(
-                    "Sound",
-                    isOn: Binding(
-                        get: { state.soundEnabled },
-                        set: { actions.sound($0) }
-                    )
-                )
-                .toggleStyle(.switch).controlSize(.small)
-                Button("Preview sound", systemImage: "speaker.wave.2", action: actions.previewSound)
-                    .labelStyle(.iconOnly)
-                    .accessibilityLabel("Preview sound")
-                    .help("Preview the Ouch sound")
-                    .disabled(!state.soundEnabled)
+                HStack(spacing: 6) {
+                    Text("Model").frame(width: 44, alignment: .leading)
+                    Picker(
+                        "Model",
+                        selection: Binding(
+                            get: { state.filter.model ?? "" },
+                            set: { model in
+                                var filter = state.filter
+                                filter.model = model.isEmpty ? nil : model
+                                filter.thread = nil
+                                actions.filter(filter)
+                            })
+                    ) {
+                        Text("All models").tag("")
+                        ForEach(state.models) { model in
+                            Text(model.id).lineLimit(1).truncationMode(.middle).tag(model.id)
+                        }
+                    }
+                    .labelsHidden()
+                    .accessibilityLabel("Model")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(width: 220, alignment: .leading)
+                HStack(spacing: 6) {
+                    Text("Period").frame(width: 44, alignment: .leading)
+                    Picker("Period", selection: Binding(get: { period }, set: { value in applyPeriod(value) })) {
+                        Text("All time").tag(0)
+                        Text("24 hours").tag(1)
+                        Text("7 days").tag(7)
+                        Text("30 days").tag(30)
+                        if period == -1 { Text("Custom range").tag(-1) }
+                    }
+                    .labelsHidden()
+                    .accessibilityLabel("Period")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(width: 220, alignment: .leading)
+                HStack(spacing: 8) {
+                    Toggle("Sound", isOn: Binding(get: { state.soundEnabled }, set: { actions.sound($0) }))
+                        .toggleStyle(.switch).controlSize(.small)
+                        .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                    Button("Preview sound", systemImage: "speaker.wave.2", action: actions.previewSound)
+                        .labelStyle(.iconOnly)
+                        .accessibilityLabel("Preview sound")
+                        .help("Preview the Ouch sound")
+                        .disabled(!state.soundEnabled)
+                }
+                .frame(width: 128, alignment: .leading)
             }
             DateRangePickerRow(from: dateBinding(isStart: true), to: dateBinding(isStart: false))
         }
@@ -294,9 +305,21 @@ struct DateRangePickerRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            DatePicker("From", selection: from, displayedComponents: [.date, .hourAndMinute])
-            DatePicker("To", selection: to, displayedComponents: [.date, .hourAndMinute])
+            datePicker("From", selection: from)
+            datePicker("To", selection: to)
+            Color.clear.frame(width: 128, height: 0).accessibilityHidden(true)
         }
+    }
+
+    private func datePicker(_ title: String, selection: Binding<Date>) -> some View {
+        HStack(spacing: 6) {
+            Text(title).frame(width: 44, alignment: .leading)
+            DatePicker(title, selection: selection, displayedComponents: [.date, .hourAndMinute])
+                .labelsHidden()
+                .accessibilityLabel(title)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(width: 220, alignment: .leading)
     }
 }
 

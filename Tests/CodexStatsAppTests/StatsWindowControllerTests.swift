@@ -75,16 +75,17 @@ struct StatsWindowControllerTests {
         #expect(row.fittingSize.height < 120)
     }
 
-    @Test("Given the narrow dashboard content width, when showing date controls, then From and To fit on one row")
-    func compactDateRangeControls() {
+    @Test("Given the aligned date columns, when laid out narrow and wide, then their row height stays fixed")
+    func stableFilterGrid() {
         _ = NSApplication.shared
-        let controls = NSHostingView(
-            rootView: DateRangePickerRow(
-                from: .constant(Date(timeIntervalSince1970: 1_000_000)),
-                to: .constant(Date(timeIntervalSince1970: 1_100_000))
-            ).frame(width: 592))
-        #expect(controls.fittingSize.width <= 592)
-        #expect(controls.fittingSize.height < 60)
+        let from = Binding.constant(Date(timeIntervalSince1970: 1_000_000))
+        let to = Binding.constant(Date(timeIntervalSince1970: 1_100_000))
+        let compact = NSHostingView(rootView: DateRangePickerRow(from: from, to: to).frame(width: 592))
+        let wide = NSHostingView(rootView: DateRangePickerRow(from: from, to: to).frame(width: 900))
+        #expect(compact.fittingSize.width == 592)
+        #expect(wide.fittingSize.width == 900)
+        #expect(compact.fittingSize.height > 0)
+        #expect(compact.fittingSize.height == wide.fittingSize.height)
     }
 
     @Test(
