@@ -38,9 +38,12 @@ final class StatsWindowController: NSWindowController {
         onFilter(filter)
     }
 
-    func update(snapshot: AnalyticsSnapshot, isScanning: Bool, error: String?, roots: [String]) {
+    func update(
+        snapshot: AnalyticsSnapshot, isScanning: Bool, isSyncing: Bool = false, error: String?, roots: [String]
+    ) {
         state.snapshot = snapshot
-        state.isScanning = isScanning
+        if state.isScanning != isScanning { state.isScanning = isScanning }
+        if state.isSyncing != isSyncing { state.isSyncing = isSyncing }
         state.error = error
         state.roots = roots
     }

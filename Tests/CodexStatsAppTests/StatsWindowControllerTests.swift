@@ -33,6 +33,25 @@ struct StatsWindowControllerTests {
         #expect(controller.state.error == "Invalid pattern")
     }
 
+    @Test("Given an idle sync indicator, when indexing starts, then its reserved header bounds stay fixed")
+    func syncIndicatorBoundsStayFixed() {
+        _ = NSApplication.shared
+        let state = DashboardState()
+        let host = NSHostingView(rootView: SyncIndicatorView(state: state))
+        host.layoutSubtreeIfNeeded()
+        let idleHeight = host.fittingSize.height
+        #expect(idleHeight > 0)
+        state.isScanning = true
+        state.isSyncing = true
+        state.totalFiles = 1_000
+        state.files = 100
+        state.bytesRead = 1_048_576
+        host.rootView = SyncIndicatorView(state: state)
+        host.layoutSubtreeIfNeeded()
+        let scanningHeight = host.fittingSize.height
+        #expect(scanningHeight == idleHeight)
+    }
+
     @Test("Given the narrowest dashboard, when showing rankings, then the header fits without vertical letter wrapping")
     func compactRankingHeader() {
         _ = NSApplication.shared

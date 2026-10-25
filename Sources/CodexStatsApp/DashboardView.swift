@@ -82,8 +82,9 @@ struct DashboardView: View {
             HStack {
                 Text("Overview").font(.largeTitle.bold())
                 Spacer()
+                SyncIndicatorView(state: state)
                 Button("Refresh", systemImage: "arrow.clockwise", action: actions.refresh)
-                    .disabled(state.isScanning).keyboardShortcut("r")
+                    .keyboardShortcut("r")
             }
             HStack(alignment: .center, spacing: 12) {
                 Picker(
@@ -129,16 +130,6 @@ struct DashboardView: View {
     }
 
     @ViewBuilder private var status: some View {
-        if state.isScanning {
-            HStack(spacing: 10) {
-                ProgressView().controlSize(.small)
-                Text(
-                    state.totalFiles == 0
-                        ? "Checking log changes…"
-                        : "Indexing \(state.files)/\(state.totalFiles) files · \(ByteCountFormatter.string(fromByteCount: Int64(state.bytesRead), countStyle: .file)) read"
-                )
-            }.font(.callout)
-        }
         if let error = state.error {
             Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red).textSelection(.enabled)
         }
@@ -308,5 +299,40 @@ struct DateRangePickerRow: View {
             DatePicker("From", selection: from, displayedComponents: [.date, .hourAndMinute])
             DatePicker("To", selection: to, displayedComponents: [.date, .hourAndMinute])
         }
+    }
+}
+
+struct SyncIndicatorView: View {
+    @ObservedObject var state: DashboardState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 0.5, paused: !state.isSyncing || reduceMotion)) { timeline in
+            let lit =
+                state.isSyncing && (reduceMotion || Int(timeline.date.timeIntervalSinceReferenceDate * 2) % 2 == 0)
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(lit ? Color.green : Color.green.opacity(0.22))
+                    .frame(width: 8, height: 8)
+                    .accessibilityHidden(true)
+                Text("SYNC")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .frame(width: 34, alignment: .leading)
+            }
+            .frame(width: 52, alignment: .leading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(description)
+            .help(description)
+        }
+        .frame(width: 52, height: 16, alignment: .leading)
+    }
+
+    private var description: String {
+        if let error = state.error { return "Sync failed: \(error)" }
+        guard state.isSyncing else { return "Up to date" }
+        guard state.isScanning else { return "Syncing logs" }
+        guard state.totalFiles > 0 else { return "Checking log changes" }
+        let bytes = ByteCountFormatter.string(fromByteCount: Int64(state.bytesRead), countStyle: .file)
+        return "Indexing \(state.files) of \(state.totalFiles) files · \(bytes) read"
     }
 }

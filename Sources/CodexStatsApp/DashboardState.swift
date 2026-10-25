@@ -9,6 +9,7 @@ final class DashboardState: ObservableObject {
     @Published var threads: [ThreadSummary] = []
     @Published var filter = AnalyticsFilter()
     @Published var isScanning = false
+    @Published var isSyncing = false
     @Published var error: String?
     @Published var roots: [String] = []
     @Published var files = 0

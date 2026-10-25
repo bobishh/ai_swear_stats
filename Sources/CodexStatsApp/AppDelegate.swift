@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var watchedRootPaths: [String] = []
     private var changedPaths: Set<URL> = []
     private var changedPathTask: Task<Void, Never>?
+    private var isDrainingChangedPaths = false
     private var fullScanPending = false
     private var hasCompletedInitialScan = false
     private var suppressChangedPathSound = true
@@ -177,8 +178,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func scheduleChangedPathDrain() {
         guard changedPathTask == nil, !changedPaths.isEmpty else { return }
+        setChangedPathSyncActive(true)
         changedPathTask = Task {
-            do { try await Task.sleep(for: .milliseconds(200)) } catch { changedPathTask = nil; return }
+            do { try await Task.sleep(for: .milliseconds(200)) } catch {
+                changedPathTask = nil
+                if changedPaths.isEmpty || isScanning { setChangedPathSyncActive(false) }
+                return
+            }
             while !Task.isCancelled, !isScanning, !changedPaths.isEmpty, let index {
                 let paths = changedPaths
                 changedPaths.removeAll()
@@ -190,8 +196,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 } catch is CancellationError { break } catch { showError(error) }
             }
             changedPathTask = nil
-            if !changedPaths.isEmpty, !isScanning { scheduleChangedPathDrain() }
+            if !changedPaths.isEmpty, !isScanning {
+                scheduleChangedPathDrain()
+            } else {
+                setChangedPathSyncActive(false)
+            }
         }
+    }
+
+    private func setChangedPathSyncActive(_ active: Bool) {
+        guard isDrainingChangedPaths != active else { return }
+        isDrainingChangedPaths = active
+        updateDashboard()
     }
 
     private func handleLiveMessages(_ messages: [MessageFact], index: AnalyticsIndex, roots: [URL]) async throws {
@@ -229,7 +245,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateDashboard(filtered: AnalyticsSnapshot? = nil) {
         guard let dashboard else { return }
         let displayed = filtered ?? (dashboard.state.filter == AnalyticsFilter() ? snapshot : dashboard.state.snapshot)
-        dashboard.update(snapshot: displayed, isScanning: isScanning, error: scanError, roots: config.rootPaths)
+        dashboard.update(
+            snapshot: displayed, isScanning: isScanning,
+            isSyncing: isScanning || isDrainingChangedPaths, error: scanError, roots: config.rootPaths)
         dashboard.state.models = snapshot.models
         if dashboard.state.filter.model == nil, dashboard.state.filter.since == nil,
             dashboard.state.filter.until == nil

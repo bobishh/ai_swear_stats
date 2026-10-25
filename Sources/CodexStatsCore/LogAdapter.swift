@@ -10,7 +10,7 @@ enum ParsedEvent {
 
 /// Converts supported JSONL representations to canonical user-message events.
 struct LogAdapter {
-    static let version = 4
+    static let version = 5
     private let decoder = JSONDecoder()
 
     func decode(_ data: Data, context: inout ParserContext) throws -> ParsedEvent {
@@ -69,8 +69,12 @@ struct LogAdapter {
         // Event mirrors, compaction history, metadata, and tool outputs are never author input.
         let knownTypes: Set<String> = [
             "event_msg", "world_state", "compacted", "token_usage_record", "inter_agent_communication_metadata",
-            "summary", "system", "progress", "file-history-snapshot", "queue-operation",
+            "summary", "system", "progress", "file-history-snapshot", "queue-operation", "attachment",
+            "last-prompt", "mode", "custom-title", "reasoning", "function_call", "function_call_output",
         ]
+        if row.type == nil {
+            if row.recordType == "state" || row.hasLegacyHeaderMetadata { return .ignored }
+        }
         if row.type == nil, row.role == nil, row.text != nil { return .ignored }
         return row.type.map { knownTypes.contains($0) ? .ignored : .unsupported } ?? .unsupported
     }
@@ -98,6 +102,7 @@ private enum UserTextFilter {
 
 private struct LogRecord: Decodable {
     let type: String?
+    let recordType: String?
     let id: String?
     let uuid: String?
     let role: String?
@@ -115,13 +120,40 @@ private struct LogRecord: Decodable {
     let sessionID: String?
     let threadID: String?
     let projectPath: String?
+    let hasLegacyHeaderMetadata: Bool
 
     enum CodingKeys: String, CodingKey {
-        case type, id, uuid, role, provider, model, title, cwd, text, isMeta, isSidechain, timestamp, content, payload,
-            message
+        case type, uuid, role, provider, model, title, cwd, text, isMeta, isSidechain, timestamp, content, payload,
+            message, id, recordType = "record_type", git, instructions
         case sessionID = "sessionId"
         case threadID = "thread_id"
         case projectPath = "project_path"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decodeIfPresent(String.self, forKey: .type)
+        recordType = try container.decodeIfPresent(String.self, forKey: .recordType)
+        id = try container.decodeIfPresent(String.self, forKey: .id)
+        uuid = try container.decodeIfPresent(String.self, forKey: .uuid)
+        role = try container.decodeIfPresent(String.self, forKey: .role)
+        provider = try container.decodeIfPresent(String.self, forKey: .provider)
+        model = try container.decodeIfPresent(String.self, forKey: .model)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        cwd = try container.decodeIfPresent(String.self, forKey: .cwd)
+        text = try container.decodeIfPresent(String.self, forKey: .text)
+        isMeta = try container.decodeIfPresent(Bool.self, forKey: .isMeta)
+        isSidechain = try container.decodeIfPresent(Bool.self, forKey: .isSidechain)
+        timestamp = try container.decodeIfPresent(LogTime.self, forKey: .timestamp)
+        content = try container.decodeIfPresent(TextContent.self, forKey: .content)
+        payload = try container.decodeIfPresent(Body.self, forKey: .payload)
+        message = try container.decodeIfPresent(Body.self, forKey: .message)
+        sessionID = try container.decodeIfPresent(String.self, forKey: .sessionID)
+        threadID = try container.decodeIfPresent(String.self, forKey: .threadID)
+        projectPath = try container.decodeIfPresent(String.self, forKey: .projectPath)
+        hasLegacyHeaderMetadata =
+            container.contains(.git) && container.contains(.id)
+            && container.contains(.instructions) && container.contains(.timestamp)
     }
 }
 

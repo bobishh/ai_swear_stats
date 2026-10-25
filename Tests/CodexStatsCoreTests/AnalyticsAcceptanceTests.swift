@@ -68,9 +68,9 @@ struct AnalyticsAcceptanceTests {
     }
 
     @Test(
-        "Given stored legacy delegation tokens, when upgrading the parser, then only candidate sources reread and archive stays quiet"
+        "Given legacy parser cursors, when upgrading the parser, then sources reparse quietly and remove delegation echoes"
     )
-    func parserUpgradeRebuildsOnlyDelegationSources() async throws {
+    func parserUpgradeRebuildsLegacySourcesQuietly() async throws {
         let fixture = try LogFixture()
         defer { fixture.remove() }
         try fixture.write(
@@ -82,7 +82,9 @@ struct AnalyticsAcceptanceTests {
         try fixture.write("unrelated.jsonl", lines: [generic(id: "safe", text: "shit")])
         let candidateURL = fixture.logs.appendingPathComponent("realtime.jsonl")
             .standardizedFileURL.resolvingSymlinksInPath()
-        let candidateSize = try Data(contentsOf: candidateURL).count
+        let expectedBytes =
+            try Data(contentsOf: candidateURL).count
+            + Data(contentsOf: fixture.logs.appendingPathComponent("unrelated.jsonl")).count
         let index = try AnalyticsIndex(databaseURL: fixture.database)
         _ = try await index.refresh(roots: [fixture.logs])
 
@@ -115,7 +117,7 @@ struct AnalyticsAcceptanceTests {
             [.text(candidateURL.path), .text("codex:legacy:wrapper"), .text(staleJSON)])
 
         let upgraded = try await index.refresh(roots: [fixture.logs])
-        #expect(upgraded.bytesRead == candidateSize)
+        #expect(upgraded.bytesRead == expectedBytes)
         #expect(upgraded.liveMessages.isEmpty)
         #expect(upgraded.snapshot.messages == 2)
         #expect(upgraded.snapshot.profanityHits == 2)
