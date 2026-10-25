@@ -8,7 +8,7 @@ final class StatsWindowController: NSWindowController {
     private let onFilter: (AnalyticsFilter) -> Void
 
     init(
-        onRefresh: @escaping () -> Void, onOpenConfig: @escaping () -> Void,
+        onOpenConfig: @escaping () -> Void,
         onFilter: @escaping (AnalyticsFilter) -> Void = { _ in },
         onAddFolder: @escaping () -> Void = {}, onRemoveFolder: @escaping (String) -> Void = { _ in },
         onNotifications: @escaping (Bool) -> Void = { _ in }, onSound: @escaping (Bool) -> Void = { _ in },
@@ -23,7 +23,7 @@ final class StatsWindowController: NSWindowController {
         window.isReleasedWhenClosed = false
         super.init(window: window)
         let actions = DashboardActions(
-            refresh: onRefresh, openConfig: onOpenConfig,
+            openConfig: onOpenConfig,
             filter: { [weak self] in self?.selectFilter($0) }, addFolder: onAddFolder,
             removeFolder: onRemoveFolder, notifications: onNotifications, sound: onSound,
             previewSound: onPreviewSound)

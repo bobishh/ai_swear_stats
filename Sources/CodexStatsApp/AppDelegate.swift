@@ -35,7 +35,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         config = loaded.config
         if case .fallbackDefault(let error) = loaded.source { scanError = "Configuration fallback: " + error }
         dashboard = StatsWindowController(
-            onRefresh: { [weak self] in self?.refreshScan() },
             onOpenConfig: { [weak self] in self?.openConfig() },
             onFilter: { [weak self] filter in self?.applyFilter(filter) },
             onAddFolder: { [weak self] in self?.addFolder() },
@@ -355,6 +354,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let show = NSMenuItem(title: "Show Swear Stats", action: #selector(showDashboard), keyEquivalent: "0")
         show.target = self
         menu.addItem(show)
+        let refresh = NSMenuItem(title: "Refresh", action: #selector(refreshScan), keyEquivalent: "r")
+        refresh.target = self
+        refresh.keyEquivalentModifierMask = [.command]
+        menu.addItem(refresh)
         let settings = NSMenuItem(title: "Configuration…", action: #selector(openConfig), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)

@@ -10,7 +10,7 @@ struct StatsWindowControllerTests {
     @Test("Given a dashboard, when opened then closed and reopened, then its window remains accessible")
     func reopensDashboard() throws {
         _ = NSApplication.shared
-        let controller = StatsWindowController(onRefresh: {}, onOpenConfig: {})
+        let controller = StatsWindowController(onOpenConfig: {})
         let window = try #require(controller.window)
         controller.showWindow(nil)
         #expect(window.isVisible)
@@ -25,7 +25,7 @@ struct StatsWindowControllerTests {
     @Test("Given a pending scan, when scan fails, then dashboard reports the error and permits retry")
     func scanFailureState() {
         _ = NSApplication.shared
-        let controller = StatsWindowController(onRefresh: {}, onOpenConfig: {})
+        let controller = StatsWindowController(onOpenConfig: {})
         controller.update(snapshot: .empty, isScanning: true, error: nil, roots: [])
         #expect(controller.state.isScanning)
         controller.update(snapshot: .empty, isScanning: false, error: "Invalid pattern", roots: [])
@@ -105,7 +105,7 @@ struct StatsWindowControllerTests {
     func selectsModel() {
         _ = NSApplication.shared
         var selected: String?
-        let controller = StatsWindowController(onRefresh: {}, onOpenConfig: {}, onFilter: { selected = $0.model })
+        let controller = StatsWindowController(onOpenConfig: {}, onFilter: { selected = $0.model })
         controller.selectFilter(AnalyticsFilter(model: "claude/model-b"))
         #expect(selected == "claude/model-b")
     }

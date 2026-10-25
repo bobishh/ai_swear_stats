@@ -25,7 +25,6 @@ final class DashboardState: ObservableObject {
 
 @MainActor
 struct DashboardActions {
-    var refresh: () -> Void
     var openConfig: () -> Void
     var filter: (AnalyticsFilter) -> Void
     var addFolder: () -> Void

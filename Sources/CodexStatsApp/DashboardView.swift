@@ -83,8 +83,6 @@ struct DashboardView: View {
                 Text("Overview").font(.largeTitle.bold())
                 Spacer()
                 SyncIndicatorView(state: state)
-                Button("Refresh", systemImage: "arrow.clockwise", action: actions.refresh)
-                    .keyboardShortcut("r")
             }
             HStack(alignment: .center, spacing: 12) {
                 Picker(
