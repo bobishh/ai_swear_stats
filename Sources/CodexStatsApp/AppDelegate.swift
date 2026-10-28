@@ -213,7 +213,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard roots == config.resolvedRootURLs() else { return }
         try await LiveMessageFeedback.deliver(
             messages,
-            playSound: { [weak self] in self?.playSoundForLiveProfanity($0) },
+            reactToLiveProfanity: { [weak self] in self?.reactToLiveProfanity($0) },
             evaluateNotifications: { [weak self] in
                 guard let self else { return }
                 try await self.evaluateNotifications($0, index: index)
@@ -301,11 +301,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func playSoundForLiveProfanity(_ messages: [MessageFact]) {
-        guard !speechSynthesizer.isSpeaking, let classifier,
-            soundPolicy.shouldPlay(messages, enabled: config.soundEnabled, classifier: classifier)
+    private func reactToLiveProfanity(_ messages: [MessageFact]) {
+        guard let classifier else { return }
+        let hits = LiveSoundPolicy.profanityHits(in: messages, classifier: classifier)
+        guard hits > 0 else { return }
+        dashboard?.state.mascotReaction = ChartMascotReaction(profanityHits: hits)
+        guard !speechSynthesizer.isSpeaking,
+            let cue = soundPolicy.cue(profanityHits: hits, enabled: config.soundEnabled)
         else { return }
-        speakOuch()
+        speakOuch(cue)
     }
 
     private func previewSound() {
@@ -313,11 +317,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         speakOuch()
     }
 
-    private func speakOuch() {
+    private func speakOuch(_ cue: LiveSoundCue? = nil) {
         let utterance = AVSpeechUtterance(string: "Ouch!")
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.9
-        utterance.volume = 0.3
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * (cue?.rateMultiplier ?? 0.9)
+        utterance.pitchMultiplier = cue?.pitchMultiplier ?? 1.0
+        utterance.volume = cue?.volume ?? 0.3
         speechSynthesizer.speak(utterance)
     }
 

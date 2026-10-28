@@ -13,7 +13,8 @@ The app appears in the Dock; clicking its icon reopens the dashboard. **Command-
 ## Explore
 
 - **All threads, model, and period filters** narrow the totals, rankings, chart, and source diagnostics. Select a thread for its statistics.
-- **Sound** sits beside the model and period filters, starts off, and has a preview button. It speaks “Ouch!” once per coalesced filesystem-change batch containing fresh profanity, with a short cooldown. It uses the macOS English speech voice and stays independent of burst reminders. Initial imports, attached-folder imports, restart backlog, rebuilds, and replayed messages stay silent. A five-second full reconciliation catches missed filesystem events.
+- **Sound** sits beside the model and period filters, starts off, and has a preview button. It speaks “Ouch!” once per coalesced filesystem-change batch containing fresh profanity, with a short cooldown. The voice gets slower and lower for 2–3, 4–7, and 8+ hits; volume stays fixed and sounds never overlap. It uses the macOS English speech voice and stays independent of burst reminders. Initial imports, attached-folder imports, restart backlog, rebuilds, and replayed messages stay silent. A five-second full reconciliation catches missed filesystem events.
+- **Chart mascot:** Bro walks along a fixed track under the timeline and squats at each end. Fresh profanity briefly triggers a reaction even when Sound is off. Reduce Motion keeps him on one idle frame; the decorative track does not intercept chart selection.
 - **Custom dates:** drag across the intensity chart or edit **From / To**. The date and time controls display the selected range and filter the same dashboard data. Choose **All time** to clear both bounds. Drags spanning less than one minute are ignored.
 - **Words / Families** switches between individual recognized words and families grouped by Snowball stem, language, and lexical category. Family labels show the most frequent observed word in the selected data; ties use lexical order. Labels can change with filters while family identity stays stable. Search matches every member word and the stem. Here, “family” names a ranking view, not a semantic taxonomy or a classifier rule. Words is the default view; the selected mode survives restarts.
 - **Ranking search** searches the complete selected ranking and shows the result count.
@@ -65,7 +66,7 @@ Classification uses exact tokens and explicit forms/morphology, Unicode canonica
 
 ## Burst reminders
 
-Enable **Burst reminders**, then allow notifications in the macOS prompt. English joke notifications trigger after **five profanities across at least two new messages within two minutes**. A **15-minute cooldown** and quiet-window rearm limit repeated alerts.
+Enable **Burst reminders**, then allow notifications in the macOS prompt. One of 32 English developer and robot-uprising jokes triggers after **five profanities across at least two new messages within two minutes**. A **15-minute cooldown** and quiet-window rearm limit repeated alerts.
 
 Initial imports, rebuilt sources, restart backlog, and replayed records cannot trigger reminders. Notifications use fixed templates, never chat excerpts. If permission is blocked, **Notification Settings…** opens system settings; allow Swear Stats and return to the app. Delivery also depends on macOS notification settings and Focus modes.
 

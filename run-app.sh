@@ -12,6 +12,12 @@ if [ -d "$app/codex_stats_CodexStatsCore.bundle" ]; then
     mv "$app/codex_stats_CodexStatsCore.bundle" "$app/Contents/Resources/"
 fi
 ditto .build/release/codex_stats_CodexStatsCore.bundle "$app/Contents/Resources/codex_stats_CodexStatsCore.bundle"
+for bundle in .build/release/*_CodexStatsApp.bundle; do
+    if [ -d "$bundle" ]; then
+        ditto "$bundle" "$app/Contents/Resources/$(basename "$bundle")"
+    fi
+done
+cp Sources/CodexStatsApp/Resources/Brand/SwearStats.icns "$app/Contents/Resources/SwearStats.icns"
 cp LICENSE THIRD_PARTY_NOTICES.md "$app/Contents/Resources/"
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -22,6 +28,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
 <key>CFBundleIdentifier</key><string>local.bogdan.codex-stats</string>
 <key>CFBundleExecutable</key><string>codex_stats_app</string>
 <key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleIconFile</key><string>SwearStats</string>
 <key>CFBundleVersion</key><string>1</string>
 <key>CFBundleShortVersionString</key><string>$version</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>

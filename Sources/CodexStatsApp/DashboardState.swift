@@ -20,6 +20,7 @@ final class DashboardState: ObservableObject {
     @Published var notificationNeedsSettings = false
     @Published var notificationStatus = ""
     @Published var soundEnabled = false
+    @Published var mascotReaction: ChartMascotReaction?
     @Published var showFolders = false
 }
 

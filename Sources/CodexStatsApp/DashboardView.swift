@@ -30,7 +30,17 @@ struct DashboardView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Swear Stats", systemImage: "waveform.path").font(.title2.bold()).padding(.top, 12)
+            HStack(spacing: 8) {
+                if let logo = AppResources.sidebarLogo {
+                    Image(nsImage: logo).resizable().interpolation(.none).frame(width: 28, height: 28)
+                } else {
+                    Image(systemName: "waveform.path").frame(width: 28, height: 28)
+                }
+                Text("Swear Stats").font(.title2.bold())
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Swear Stats")
+            .padding(.top, 12)
             Button("All threads") {
                 var filter = state.filter
                 filter.thread = nil
@@ -163,50 +173,53 @@ struct DashboardView: View {
             Text("Profanities per second · \(timelineBucketDescription) buckets")
                 .font(.caption).foregroundStyle(.secondary)
             if state.snapshot.timeline.isEmpty {
-                Text(
-                    state.isScanning
-                        ? "Indexing…" : "No timestamped messages"
-                )
-                .foregroundStyle(.secondary).frame(maxWidth: .infinity).frame(height: 150)
-            } else {
-                Chart(state.snapshot.timeline) { point in
-                    BarMark(
-                        xStart: .value("Start", point.time), xEnd: .value("End", point.end),
-                        y: .value("Profanities/s", point.perSecond)
-                    ).foregroundStyle(Color.orange)
+                VStack(spacing: 0) {
+                    Text(state.isScanning ? "Indexing…" : "No timestamped messages")
+                        .foregroundStyle(.secondary).frame(maxWidth: .infinity).frame(height: 170)
+                    mascotTrack
                 }
-                .frame(height: 170)
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 5)) }
-                .chartOverlay { proxy in
-                    GeometryReader { geometry in
-                        let plotFrame = geometry[proxy.plotAreaFrame]
-                        ZStack(alignment: .topLeading) {
-                            Rectangle().fill(.clear).contentShape(Rectangle())
-                                .gesture(
-                                    DragGesture(minimumDistance: 4)
-                                        .onChanged { value in
-                                            dragRange = dateRange(value, proxy: proxy, geometry: geometry)
-                                        }
-                                        .onEnded { value in
-                                            defer { dragRange = nil }
-                                            guard let range = dateRange(value, proxy: proxy, geometry: geometry),
-                                                range.upperBound.timeIntervalSince(range.lowerBound) >= 60
-                                            else { return }
-                                            period = -1
-                                            actions.filter(DateRangeSelection.applying(range, to: state.filter))
-                                        })
-                            if let dragRange,
-                                let start = proxy.position(forX: dragRange.lowerBound),
-                                let end = proxy.position(forX: dragRange.upperBound)
-                            {
-                                Rectangle()
-                                    .fill(Color.accentColor.opacity(0.18))
-                                    .frame(width: abs(end - start), height: plotFrame.height)
-                                    .offset(x: plotFrame.minX + min(start, end), y: plotFrame.minY)
-                                    .allowsHitTesting(false)
+            } else {
+                VStack(spacing: 0) {
+                    Chart(state.snapshot.timeline) { point in
+                        BarMark(
+                            xStart: .value("Start", point.time), xEnd: .value("End", point.end),
+                            y: .value("Profanities/s", point.perSecond)
+                        ).foregroundStyle(Color.orange)
+                    }
+                    .frame(height: 170)
+                    .chartXAxis { AxisMarks(values: .automatic(desiredCount: 5)) }
+                    .chartOverlay { proxy in
+                        GeometryReader { geometry in
+                            let plotFrame = geometry[proxy.plotAreaFrame]
+                            ZStack(alignment: .topLeading) {
+                                Rectangle().fill(.clear).contentShape(Rectangle())
+                                    .gesture(
+                                        DragGesture(minimumDistance: 4)
+                                            .onChanged { value in
+                                                dragRange = dateRange(value, proxy: proxy, geometry: geometry)
+                                            }
+                                            .onEnded { value in
+                                                defer { dragRange = nil }
+                                                guard let range = dateRange(value, proxy: proxy, geometry: geometry),
+                                                    range.upperBound.timeIntervalSince(range.lowerBound) >= 60
+                                                else { return }
+                                                period = -1
+                                                actions.filter(DateRangeSelection.applying(range, to: state.filter))
+                                            })
+                                if let dragRange,
+                                    let start = proxy.position(forX: dragRange.lowerBound),
+                                    let end = proxy.position(forX: dragRange.upperBound)
+                                {
+                                    Rectangle()
+                                        .fill(Color.accentColor.opacity(0.18))
+                                        .frame(width: abs(end - start), height: plotFrame.height)
+                                        .offset(x: plotFrame.minX + min(start, end), y: plotFrame.minY)
+                                        .allowsHitTesting(false)
+                                }
                             }
                         }
                     }
+                    mascotTrack
                 }
             }
             if state.snapshot.missingTimestamps > 0 {
@@ -214,6 +227,17 @@ struct DashboardView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var mascotTrack: some View {
+        ZStack(alignment: .bottom) {
+            Rectangle().fill(Color.secondary.opacity(0.18)).frame(height: 1)
+            ChartMascotView(state: state)
+        }
+        .padding(.leading, 44)
+        .padding(.trailing, 12)
+        .frame(height: ChartMascotMotion.spriteHeight)
+        .allowsHitTesting(false)
     }
 
     private var timelineBucketDescription: String {

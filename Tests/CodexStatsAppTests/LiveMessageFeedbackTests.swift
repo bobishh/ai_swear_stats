@@ -5,10 +5,10 @@ import Testing
 
 struct LiveMessageFeedbackTests {
     @Test(
-        "Given a targeted two-message batch with five profanity hits, when feedback runs then reminder fires and reconciliation does not duplicate it"
+        "Given a targeted two-message batch with five profanity hits, when fresh feedback runs, then reaction and reminder fire once"
     )
     @MainActor
-    func targetedMessagesReachSoundAndBurstReminderOnce() async throws {
+    func targetedMessagesReachReactionAndBurstReminderOnce() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -34,12 +34,18 @@ struct LiveMessageFeedbackTests {
 
         let classifier = try WordClassifier()
         var policy = BurstPolicy()
-        var soundBatches = 0
+        var soundPolicy = LiveSoundPolicy()
+        let soundEnabled = false
+        var reactionHits = 0
         var notificationBatches = 0
         var reminders = 0
         try await LiveMessageFeedback.deliver(
             targeted,
-            playSound: { _ in soundBatches += 1 },
+            reactToLiveProfanity: { messages in
+                let hits = LiveSoundPolicy.profanityHits(in: messages, classifier: classifier)
+                reactionHits += hits
+                #expect(soundPolicy.cue(profanityHits: hits, enabled: soundEnabled) == nil)
+            },
             evaluateNotifications: { messages in
                 notificationBatches += 1
                 if try policy.evaluate(messages, classifier: classifier, now: now) != nil { reminders += 1 }
@@ -49,14 +55,18 @@ struct LiveMessageFeedbackTests {
         #expect(reconciliation.liveMessages.isEmpty)
         try await LiveMessageFeedback.deliver(
             reconciliation.liveMessages,
-            playSound: { _ in soundBatches += 1 },
+            reactToLiveProfanity: { messages in
+                let hits = LiveSoundPolicy.profanityHits(in: messages, classifier: classifier)
+                reactionHits += hits
+                #expect(soundPolicy.cue(profanityHits: hits, enabled: soundEnabled) == nil)
+            },
             evaluateNotifications: { messages in
                 notificationBatches += 1
                 if try policy.evaluate(messages, classifier: classifier, now: now.addingTimeInterval(1)) != nil {
                     reminders += 1
                 }
             })
-        #expect(soundBatches == 1)
+        #expect(reactionHits == 5)
         #expect(notificationBatches == 1)
         #expect(reminders == 1)
     }

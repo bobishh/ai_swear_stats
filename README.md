@@ -1,10 +1,12 @@
+<p><img src="docs/images/swear-stats.svg" width="128" height="128" alt="Swear Stats pixel mascot at a laptop"></p>
+
 # Swear Stats
 
 **See which AI conversations make you swear.** Swear Stats is a macOS app that counts profanity in your chat logs, highlights heated threads, and compares models over time. It reads Codex, Claude Code, and generic JSONL logs locally, using a bundled dictionary. Conversations stay on your Mac.
 
 - **Find the hottest threads.** A blue-to-red sidebar accounts for both profanity frequency and conversation size.
 - **Compare models and periods.** Filter the same totals, word rankings, and timeline; drag across the chart to inspect a time range.
-- **Catch new outbursts.** Optional “Ouch!” sounds react to fresh profanity. Burst reminders add English joke notifications.
+- **Catch new outbursts.** A pixel mascot walks and squats along the chart. Optional “Ouch!” sounds get slower and lower as fresh profanity rises. Burst reminders add English joke notifications.
 - **Keep your archive local.** Source logs stay read-only. An incremental index reads new records without rescanning the entire archive.
 
 ![Swear Stats dashboard with thread heat, model and date filters, a timeline, and word rankings. Synthetic example data.](docs/images/dashboard.png)

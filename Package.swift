@@ -29,7 +29,8 @@ let package = Package(
         .executableTarget(
             name: "CodexStatsApp",
             dependencies: ["CodexStatsCore"],
-            path: "Sources/CodexStatsApp"
+            path: "Sources/CodexStatsApp",
+            resources: [.copy("Resources/Mascot"), .copy("Resources/Brand")]
         ),
         .testTarget(
             name: "CodexStatsAppTests",
