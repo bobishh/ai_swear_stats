@@ -305,7 +305,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let classifier else { return }
         let hits = LiveSoundPolicy.profanityHits(in: messages, classifier: classifier)
         guard hits > 0 else { return }
-        dashboard?.state.mascotReaction = ChartMascotReaction(profanityHits: hits)
+        dashboard?.state.mascotCycle.receive(hits: hits, at: Date())
         guard !speechSynthesizer.isSpeaking,
             let cue = soundPolicy.cue(profanityHits: hits, enabled: config.soundEnabled)
         else { return }

@@ -17,20 +17,20 @@ struct ChartMascotViewTests {
         #expect(ChartMascotImages.hasAllFrames)
     }
 
-    @Test("Given idle and reaction poses, when the mascot updates, then chart lane height stays fixed")
+    @Test("Given loading and live cycle state, when the mascot updates, then chart lane height stays fixed")
     @MainActor
-    func reactionKeepsLaneHeight() {
+    func cycleKeepsLaneHeight() {
         _ = NSApplication.shared
         let state = DashboardState()
         let host = NSHostingView(rootView: ChartMascotView(state: state).frame(width: 240))
         host.layoutSubtreeIfNeeded()
         let idleHeight = host.fittingSize.height
 
-        state.mascotReaction = ChartMascotReaction(profanityHits: 8)
+        state.mascotCycle.receive(hits: 8, at: Date())
         host.rootView = ChartMascotView(state: state).frame(width: 240)
         host.layoutSubtreeIfNeeded()
 
-        #expect(idleHeight == ChartMascotMotion.spriteHeight)
+        #expect(idleHeight == ChartMascotMotion.laneHeight)
         #expect(host.fittingSize.height == idleHeight)
     }
 }

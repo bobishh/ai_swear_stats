@@ -15,7 +15,7 @@ struct LiveMessageFeedbackTests {
         let source = directory.appendingPathComponent("chat.jsonl")
         let now = Date()
         let formatter = ISO8601DateFormatter()
-        try (record("baseline", "hello", formatter.string(from: now.addingTimeInterval(-600))) + "\n").write(
+        try (record("baseline", "fuck fuck", formatter.string(from: now.addingTimeInterval(-600))) + "\n").write(
             to: source, atomically: true, encoding: .utf8)
         let index = try AnalyticsIndex(databaseURL: directory.appendingPathComponent("index.sqlite"))
         _ = try await index.refresh(roots: [directory])
@@ -37,6 +37,7 @@ struct LiveMessageFeedbackTests {
         var soundPolicy = LiveSoundPolicy()
         let soundEnabled = false
         var reactionHits = 0
+        var mascotCycle = MascotCycle(now: now)
         var notificationBatches = 0
         var reminders = 0
         try await LiveMessageFeedback.deliver(
@@ -44,6 +45,7 @@ struct LiveMessageFeedbackTests {
             reactToLiveProfanity: { messages in
                 let hits = LiveSoundPolicy.profanityHits(in: messages, classifier: classifier)
                 reactionHits += hits
+                mascotCycle.receive(hits: hits, at: now)
                 #expect(soundPolicy.cue(profanityHits: hits, enabled: soundEnabled) == nil)
             },
             evaluateNotifications: { messages in
@@ -58,6 +60,7 @@ struct LiveMessageFeedbackTests {
             reactToLiveProfanity: { messages in
                 let hits = LiveSoundPolicy.profanityHits(in: messages, classifier: classifier)
                 reactionHits += hits
+                mascotCycle.receive(hits: hits, at: now)
                 #expect(soundPolicy.cue(profanityHits: hits, enabled: soundEnabled) == nil)
             },
             evaluateNotifications: { messages in
@@ -67,6 +70,8 @@ struct LiveMessageFeedbackTests {
                 }
             })
         #expect(reactionHits == 5)
+        #expect(mascotCycle.snapshot(at: now).totalDrunk == 5)
+        #expect(mascotCycle.snapshot(at: now).phase == .buzzing)
         #expect(notificationBatches == 1)
         #expect(reminders == 1)
     }

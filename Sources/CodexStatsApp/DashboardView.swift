@@ -236,7 +236,7 @@ struct DashboardView: View {
         }
         .padding(.leading, 44)
         .padding(.trailing, 12)
-        .frame(height: ChartMascotMotion.spriteHeight)
+        .frame(height: ChartMascotMotion.laneHeight)
         .allowsHitTesting(false)
     }
 
