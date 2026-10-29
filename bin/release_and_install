@@ -1,0 +1,81 @@
+#!/bin/sh
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+APP_NAME="Swear Stats.app"
+BUNDLE_ID="local.bogdan.codex-stats"
+EXECUTABLE="codex_stats_app"
+SOURCE_APP="$ROOT/.build/$APP_NAME"
+APPLICATIONS_DIR=${APPLICATIONS_DIR:-/Applications}
+OPEN_AFTER_INSTALL=1
+
+usage() {
+    cat <<'EOF'
+Usage: bin/release_and_install [--no-open]
+
+Builds the release app, installs it in /Applications, and opens it.
+Set APPLICATIONS_DIR to install somewhere else.
+EOF
+}
+
+case "${1:-}" in
+    "") ;;
+    --no-open) OPEN_AFTER_INSTALL=0 ;;
+    -h|--help) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+esac
+
+"$ROOT/run-app.sh" --build-only
+
+if [ ! -d "$SOURCE_APP" ]; then
+    echo "Release app was not produced at $SOURCE_APP" >&2
+    exit 1
+fi
+
+mkdir -p "$APPLICATIONS_DIR"
+TARGET_APP="$APPLICATIONS_DIR/$APP_NAME"
+STAGED_APP="$APPLICATIONS_DIR/.$APP_NAME.install.$$"
+BACKUP_APP="$APPLICATIONS_DIR/.$APP_NAME.previous.$$"
+
+cleanup() {
+    rm -rf "$STAGED_APP"
+    if [ -e "$BACKUP_APP" ] && [ ! -e "$TARGET_APP" ]; then
+        mv "$BACKUP_APP" "$TARGET_APP"
+    elif [ -e "$BACKUP_APP" ]; then
+        rm -rf "$BACKUP_APP"
+    fi
+}
+trap cleanup EXIT HUP INT TERM
+
+ditto "$SOURCE_APP" "$STAGED_APP"
+codesign --verify --deep --strict "$STAGED_APP"
+
+if [ "$APPLICATIONS_DIR" = "/Applications" ]; then
+    osascript -e "if application id \"$BUNDLE_ID\" is running then tell application id \"$BUNDLE_ID\" to quit" \
+        >/dev/null 2>&1 || true
+    attempts=0
+    while pgrep -f "$TARGET_APP/Contents/MacOS/$EXECUTABLE" >/dev/null 2>&1 && [ "$attempts" -lt 50 ]; do
+        sleep 0.1
+        attempts=$((attempts + 1))
+    done
+fi
+
+if [ -e "$TARGET_APP" ]; then
+    mv "$TARGET_APP" "$BACKUP_APP"
+fi
+
+if mv "$STAGED_APP" "$TARGET_APP"; then
+    rm -rf "$BACKUP_APP"
+else
+    if [ -e "$BACKUP_APP" ]; then
+        mv "$BACKUP_APP" "$TARGET_APP"
+    fi
+    exit 1
+fi
+
+trap - EXIT HUP INT TERM
+echo "Installed $TARGET_APP"
+
+if [ "$OPEN_AFTER_INSTALL" -eq 1 ]; then
+    open "$TARGET_APP"
+fi

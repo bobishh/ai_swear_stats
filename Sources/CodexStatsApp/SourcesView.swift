@@ -5,57 +5,41 @@ import SwiftUI
 struct SourcesView: View {
     let snapshot: AnalyticsSnapshot
     @State var expanded = false
-    @State private var onlyIssues = false
-    @State private var search = ""
 
     private var issues: [SourceHealth] { snapshot.sources.filter(\.hasIssues) }
-    private var visibleSources: [SourceHealth] {
-        snapshot.sources.filter {
-            (!onlyIssues || $0.hasIssues) && (search.isEmpty || $0.path.localizedCaseInsensitiveContains(search))
-        }.sorted {
-            $0.hasIssues == $1.hasIssues ? $0.path < $1.path : $0.hasIssues
-        }
-    }
 
+    @ViewBuilder
     var body: some View {
-        DisclosureGroup(isExpanded: $expanded) {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(snapshot.folderWarnings) { folder in
-                    Label(
-                        "Folder: \(folder.path) · \(folder.error ?? "Unavailable")",
-                        systemImage: "folder.badge.questionmark"
-                    )
-                    .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                }
-                HStack {
-                    Picker("Show", selection: $onlyIssues) {
-                        Text("All files (\(snapshot.sources.count))").tag(false)
-                        Text("Issues (\(issues.count))").tag(true)
-                    }.frame(maxWidth: 240)
-                    TextField("Filter files…", text: $search).textFieldStyle(.roundedBorder).frame(maxWidth: 280)
-                }
-                Text(
-                    "\(snapshot.sources.count - issues.count) without issues · \(issues.count) with issues · \(visibleSources.count) shown"
-                )
-                .font(.caption).foregroundStyle(.secondary)
-                if visibleSources.isEmpty {
-                    Text("No files match this selection.").foregroundStyle(.secondary).padding(.vertical)
-                } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 8) {
-                            ForEach(visibleSources) { source in
-                                SourceFileRow(
-                                    source: source, messages: snapshot.sourceMessageCounts[source.path, default: 0])
-                                Divider()
+        if !issues.isEmpty || !snapshot.folderWarnings.isEmpty {
+            DisclosureGroup(isExpanded: $expanded) {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(snapshot.folderWarnings) { folder in
+                        Label(
+                            "Folder: \(folder.path) · \(folder.error ?? "Unavailable")",
+                            systemImage: "folder.badge.questionmark"
+                        )
+                        .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    }
+                    if !issues.isEmpty {
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 8) {
+                                ForEach(issues.sorted(by: { $0.path < $1.path })) { source in
+                                    SourceFileRow(
+                                        source: source,
+                                        messages: snapshot.sourceMessageCounts[source.path, default: 0])
+                                    Divider()
+                                }
                             }
                         }
-                    }.frame(height: min(300, CGFloat(visibleSources.count) * 85))
+                        .frame(height: min(300, CGFloat(issues.count) * 85))
+                    }
                 }
-            }.padding(.top, 8)
-        } label: {
-            Text(
-                "Sources · \(snapshot.sources.count) \(snapshot.sources.count == 1 ? "file" : "files") · \(issues.count) with issues"
-            )
+                .padding(.top, 8)
+            } label: {
+                Label(
+                    "Source issues · \(issues.count + snapshot.folderWarnings.count)",
+                    systemImage: "exclamationmark.triangle")
+            }
         }
     }
 }

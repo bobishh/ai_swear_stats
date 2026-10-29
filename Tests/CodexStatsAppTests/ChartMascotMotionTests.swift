@@ -5,21 +5,44 @@ import Testing
 struct ChartMascotMotionTests {
     private let start = Date(timeIntervalSince1970: 1_800_000_000)
 
-    @Test("Given calm state, when time advances, then mascot stays home without an itinerary")
-    func calmStaysHome() {
+    @Test("Given calm state, when time advances, then mascot walks both ways and squats at each end")
+    func calmPatrolReturns() {
         let snapshot = makeSnapshot(phase: .settled)
-        let first = ChartMascotMotion.frame(snapshot: snapshot, at: start, availableWidth: 480)
-        let later = ChartMascotMotion.frame(snapshot: snapshot, at: start.addingTimeInterval(20), availableWidth: 480)
+        let outbound = ChartMascotMotion.frame(
+            snapshot: snapshot, at: start.addingTimeInterval(5.2), availableWidth: 480)
+        let rightSquat = ChartMascotMotion.frame(
+            snapshot: snapshot, at: start.addingTimeInterval(11.4), availableWidth: 480)
+        let inbound = ChartMascotMotion.frame(
+            snapshot: snapshot, at: start.addingTimeInterval(17.8), availableWidth: 480)
+        let leftSquat = ChartMascotMotion.frame(
+            snapshot: snapshot, at: start.addingTimeInterval(24.2), availableWidth: 480)
 
-        #expect(first.pose == .squat)
-        #expect(first.x == later.x)
-        #expect(first.x == ChartMascotMotion.homeX(availableWidth: 480))
+        #expect(outbound.pose == .walkRight)
+        #expect(rightSquat.pose == .squat)
+        #expect(inbound.pose == .walkLeft)
+        #expect(leftSquat.pose == .squat)
+        #expect(outbound.x < rightSquat.x)
+        #expect(inbound.x < rightSquat.x)
+        #expect(outbound.x > leftSquat.x)
+    }
+
+    @Test("Given regenerated settled projections, when sampled at the same instant, then patrol does not restart")
+    func settledProjectionDoesNotRestartPatrol() {
+        let date = start.addingTimeInterval(7)
+        let earlier = makeSnapshot(phase: .settled, phaseStartedAt: start)
+        let regenerated = makeSnapshot(phase: .settled, phaseStartedAt: date)
+
+        #expect(
+            ChartMascotMotion.frame(snapshot: earlier, at: date, availableWidth: 480)
+                == ChartMascotMotion.frame(snapshot: regenerated, at: date, availableWidth: 480))
     }
 
     @Test(
-        "Given a fresh buzzing batch, when sampled through gulp and throw, then mascot stays home and bottles arc right"
+        "Given a fresh buzzing batch, when sampled through gulp and throw, then mascot drinks where patrol reached and bottles arc right"
     )
-    func buzzingDrinkThrowsAtHome() throws {
+    func buzzingDrinkThrowsFromPatrol() throws {
+        let patrol = ChartMascotMotion.frame(
+            snapshot: makeSnapshot(phase: .settled), at: start, availableWidth: 480)
         let snapshot = makeSnapshot(
             phase: .buzzing,
             heat: 8,
@@ -35,6 +58,7 @@ struct ChartMascotMotionTests {
         #expect(gulp.pose == .drink)
         #expect(release.pose == .throwBottle)
         #expect(gulp.x == release.x)
+        #expect(gulp.x == patrol.x)
         #expect(
             ChartMascotMotion.thrownBottlePositions(
                 snapshot: snapshot, at: start.addingTimeInterval(0.7), availableWidth: 480
@@ -219,6 +243,7 @@ struct ChartMascotMotionTests {
 
     private func makeSnapshot(
         phase: MascotCycle.Phase,
+        phaseStartedAt: Date? = nil,
         heat: Double = 0,
         bottleCount: Int = 0,
         emptyBottles: Int = 0,
@@ -227,7 +252,7 @@ struct ChartMascotMotionTests {
     ) -> MascotCycle.Snapshot {
         MascotCycle.Snapshot(
             phase: phase,
-            phaseStartedAt: start,
+            phaseStartedAt: phaseStartedAt ?? start,
             heat: heat,
             bottleCount: bottleCount,
             emptyBottles: emptyBottles,

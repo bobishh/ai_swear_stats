@@ -2,7 +2,7 @@ import Foundation
 
 enum ChartMascotMotion {
     enum Pose: Equatable {
-        case squat, drink, throwBottle, rowdy, sleep
+        case walkLeft, walkRight, squat, drink, throwBottle, rowdy, sleep
     }
 
     struct Frame: Equatable {
@@ -25,6 +25,10 @@ enum ChartMascotMotion {
     private static let queuedDrinkDuration: TimeInterval = 3
     private static let gulpShare = 0.48
     private static let visibleDrinkLimit = 4
+    private static let walkDuration: TimeInterval = 10
+    private static let squatDuration: TimeInterval = 2.8
+    private static let gaitFrameDuration: TimeInterval = 0.12
+    private static let patrolDuration = 2 * (walkDuration + squatDuration)
 
     private struct Layout {
         let width: CGFloat
@@ -55,12 +59,17 @@ enum ChartMascotMotion {
         }
 
         if let beat = drinkBeat(snapshot: snapshot, at: date, reduceMotion: reduceMotion) {
-            return Frame(pose: beat.pose, frameIndex: beat.frameIndex, x: layout.homeX, scale: layout.scale)
+            let originDate = snapshot.phase == .drinking ? snapshot.phaseStartedAt : snapshot.lastDrinkAt ?? date
+            let x = reduceMotion ? layout.homeX : patrolFrame(at: originDate, layout: layout).x
+            return Frame(pose: beat.pose, frameIndex: beat.frameIndex, x: x, scale: layout.scale)
         }
 
         switch snapshot.phase {
         case .settled, .sobering:
-            return Frame(pose: .squat, frameIndex: 0, x: layout.homeX, scale: layout.scale)
+            if reduceMotion {
+                return Frame(pose: .squat, frameIndex: 0, x: layout.homeX, scale: layout.scale)
+            }
+            return patrolFrame(at: date, layout: layout)
         case .buzzing:
             let elapsed = max(0, date.timeIntervalSince(snapshot.phaseStartedAt))
             let rate = max(0.2, 0.32 - min(snapshot.heat, 24) * 0.0035)
@@ -75,6 +84,7 @@ enum ChartMascotMotion {
 
     static func frameCount(for pose: Pose) -> Int {
         switch pose {
+        case .walkLeft, .walkRight: 8
         case .squat: 6
         case .drink, .throwBottle, .rowdy: 6
         case .sleep: 4
@@ -105,7 +115,9 @@ enum ChartMascotMotion {
         else { return [] }
         guard progress >= 0.52 else { return [] }
         let layout = makeLayout(width: availableWidth)
-        let fromX = min(layout.width - 3 * layout.scale, layout.homeX + spriteWidth * layout.scale * 0.82)
+        let originDate = snapshot.phase == .drinking ? snapshot.phaseStartedAt : snapshot.lastDrinkAt ?? date
+        let actorX = patrolFrame(at: originDate, layout: layout).x
+        let fromX = min(layout.width - 3 * layout.scale, actorX + spriteWidth * layout.scale * 0.82)
         let landing = emptyBottlePositions(count: snapshot.emptyBottles, availableWidth: availableWidth).last
         let toX = landing?.x ?? fromX
         let toY = landing?.y ?? laneHeight - 1
@@ -186,6 +198,45 @@ enum ChartMascotMotion {
     {
         guard !reduceMotion, rate > 0 else { return 0 }
         return Int(max(0, elapsed) / rate) % frameCount(for: pose)
+    }
+
+    private static func patrolFrame(at date: Date, layout: Layout) -> Frame {
+        let maxX = max(0, layout.width - spriteWidth * layout.scale)
+        let elapsed = max(0, date.timeIntervalSinceReferenceDate)
+        let phase = elapsed.truncatingRemainder(dividingBy: patrolDuration)
+        if phase < walkDuration {
+            return Frame(
+                pose: .walkRight,
+                frameIndex: gaitFrameIndex(at: phase),
+                x: maxX * phase / walkDuration,
+                scale: layout.scale)
+        }
+        if phase < walkDuration + squatDuration {
+            let progress = (phase - walkDuration) / squatDuration
+            return Frame(
+                pose: .squat,
+                frameIndex: min(5, Int(progress * 6)),
+                x: maxX,
+                scale: layout.scale)
+        }
+        if phase < 2 * walkDuration + squatDuration {
+            let progress = (phase - walkDuration - squatDuration) / walkDuration
+            return Frame(
+                pose: .walkLeft,
+                frameIndex: gaitFrameIndex(at: phase - walkDuration - squatDuration),
+                x: maxX * (1 - progress),
+                scale: layout.scale)
+        }
+        let progress = (phase - 2 * walkDuration - squatDuration) / squatDuration
+        return Frame(
+            pose: .squat,
+            frameIndex: min(5, Int(progress * 6)),
+            x: 0,
+            scale: layout.scale)
+    }
+
+    private static func gaitFrameIndex(at elapsed: TimeInterval) -> Int {
+        Int(elapsed / gaitFrameDuration) % frameCount(for: .walkRight)
     }
 
     private static func makeLayout(width: CGFloat) -> Layout {

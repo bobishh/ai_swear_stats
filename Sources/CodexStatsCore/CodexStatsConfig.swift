@@ -2,7 +2,10 @@ import Foundation
 
 /// Preserves existing log-folder settings while migrating the old regex configuration.
 public struct CodexStatsConfig: Codable, Equatable, Sendable {
-    public var schemaVersion = 2
+    public static let currentSchemaVersion = 3
+    public static let codexWorkRootPath = "~/Library/Application Support/ChatGPT Work/Codex/sessions"
+
+    public var schemaVersion = Self.currentSchemaVersion
     public var rootPaths: [String]
     public var intervalSeconds: TimeInterval
     public var notificationsEnabled: Bool
@@ -18,7 +21,9 @@ public struct CodexStatsConfig: Codable, Equatable, Sendable {
         self.soundEnabled = soundEnabled
     }
 
-    public static let defaultRootPaths = ["~/.codex", "~/.codex-work", "~/.claude/projects"]
+    public static let defaultRootPaths = [
+        "~/.codex", "~/.codex-work", "~/.claude/projects", codexWorkRootPath,
+    ]
 
     public func resolvedRootURLs() -> [URL] {
         Array(
@@ -33,12 +38,22 @@ public struct CodexStatsConfig: Codable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
         rootPaths = try container.decodeIfPresent([String].self, forKey: .rootPaths) ?? Self.defaultRootPaths
         notificationsEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? false
         soundEnabled = try container.decodeIfPresent(Bool.self, forKey: .soundEnabled) ?? false
         intervalSeconds =
             container.contains(.schemaVersion)
             ? try container.decodeIfPresent(Double.self, forKey: .intervalSeconds) ?? 5 : 5
+    }
+
+    mutating func migrate() -> Bool {
+        guard schemaVersion < Self.currentSchemaVersion else { return false }
+        if schemaVersion < 3, !rootPaths.contains(Self.codexWorkRootPath) {
+            rootPaths.append(Self.codexWorkRootPath)
+        }
+        schemaVersion = Self.currentSchemaVersion
+        return true
     }
 
     private enum CodingKeys: String, CodingKey {

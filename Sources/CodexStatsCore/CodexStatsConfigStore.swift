@@ -30,7 +30,10 @@ public final class CodexStatsConfigStore {
         do {
             if fileManager.fileExists(atPath: configURL.path) {
                 let data = try Data(contentsOf: configURL)
-                let config = try JSONDecoder().decode(CodexStatsConfig.self, from: data)
+                var config = try JSONDecoder().decode(CodexStatsConfig.self, from: data)
+                if config.migrate() {
+                    try save(config)
+                }
                 return LoadedConfig(config: config, source: .loaded)
             }
 

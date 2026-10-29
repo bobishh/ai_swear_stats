@@ -134,6 +134,8 @@ struct ChartMascotView: View {
 
 @MainActor
 enum ChartMascotImages {
+    private static let walkLeft = load("walk-left", count: 8)
+    private static let walkRight = load("walk-right", count: 8)
     private static let squat = load("squat", count: 6)
     private static let drink = load("drink", count: 6)
     private static let sleep = load("sleep", count: 4)
@@ -141,13 +143,16 @@ enum ChartMascotImages {
     private static let rowdy = load("rowdy", count: 6)
 
     static var hasAllFrames: Bool {
-        hasFrames(squat, count: 6) && hasFrames(drink, count: 6) && hasFrames(sleep, count: 4)
+        hasFrames(walkLeft, count: 8) && hasFrames(walkRight, count: 8)
+            && hasFrames(squat, count: 6) && hasFrames(drink, count: 6) && hasFrames(sleep, count: 4)
             && hasFrames(throwBottle, count: 6) && hasFrames(rowdy, count: 6)
     }
 
     static func image(pose: ChartMascotMotion.Pose, index: Int) -> NSImage? {
         let frames: [NSImage?]
         switch pose {
+        case .walkLeft: frames = walkLeft
+        case .walkRight: frames = walkRight
         case .squat: frames = squat
         case .drink: frames = drink
         case .throwBottle: frames = throwBottle

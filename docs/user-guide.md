@@ -4,7 +4,7 @@
 
 Use **Log folders… → Add log folder…** to attach a directory. Subfolders are included. Removing a folder detaches it from analytics without deleting its logs or cached records.
 
-New installations look in `~/.codex`, `~/.codex-work`, and `~/.claude/projects`. Existing configured folders are preserved. Missing folders appear as source warnings.
+New installations look in `~/.codex`, `~/.codex-work`, `~/.claude/projects`, and the Codex Work sessions folder under `~/Library/Application Support/ChatGPT Work/Codex`. Existing configurations receive the Codex Work folder once; removing it afterwards is respected. Missing folders appear as source warnings.
 
 ## App controls
 
@@ -20,7 +20,7 @@ The app appears in the Dock; clicking its icon reopens the dashboard. **Command-
 - **Ranking search** searches the complete selected ranking and shows the result count.
 - **Thread heat** runs from blue through purple and orange to red. Each row shows the actual percentage of messages containing profanity.
 - **Sort → Hottest first** uses the same temperature as the row color. **Recent activity** orders by latest message. The chosen mode survives restarts.
-- **Sources** lists every file in the current selection, with indexed message counts, health details, and a Finder action. Switch between **All files** and **Issues**, or filter by path. Folder warnings are separate and do not inflate the file count. Inside a filtered analytics view, only contributing files are included.
+- **Source issues** appears only when a log folder or file could not be read completely. Expand it for the affected path, parser details, and a Finder action. Healthy implementation details stay out of the analytics view.
 
 Temperature accounts for conversation size:
 
@@ -79,4 +79,3 @@ Initial imports, rebuilt sources, restart backlog, and replayed records cannot t
 | macOS application preferences | Thread sort order |
 
 Folder reconciliation runs every five seconds by default. UI changes save automatically; restart after editing the configuration file manually. Legacy package names and the `codex_stats` data directory remain for compatibility. Build outputs, databases, and local configuration do not belong in Git.
-

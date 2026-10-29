@@ -6,4 +6,5 @@ swift test -Xswiftc -warnings-as-errors
 swift format lint --strict --recursive Sources Tests Package.swift
 swiftlint lint --strict --quiet
 sh -n run-app.sh
+sh -n bin/release_and_install
 openspec validate --all --strict --no-interactive
