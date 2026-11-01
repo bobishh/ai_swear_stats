@@ -10,7 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var index: AnalyticsIndex?
     private var classifier: WordClassifier?
     private var dashboard: StatsWindowController?
-    private var statusItem: NSStatusItem?
+    private var desktopBro: DesktopBroController?
+    private var menus: AppMenus?
     private var timer: Timer?
     private var refreshTask: Task<Void, Never>?
     private let fileWatcher = RootFileWatcher()
@@ -61,6 +62,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.config = updated
                 })
         }
+        if let state = dashboard?.state {
+            desktopBro = DesktopBroController(state: state, openDashboard: { [weak self] in self?.showDashboard() })
+            desktopBro?.onEnabledChanged = { [weak self] enabled in
+                self?.menus?.setDesktopBroEnabled(enabled)
+            }
+        }
         if config.notificationsEnabled { setNotifications(true) }
         installMenus()
         NotificationCenter.default.addObserver(
@@ -85,6 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fileWatcher.stop()
         NotificationCenter.default.removeObserver(self)
         notificationTask?.cancel()
+        desktopBro?.close()
     }
 
     private func initializeIndex() {
@@ -253,9 +261,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         {
             dashboard.state.threads = snapshot.threads
         }
-        statusItem?.button?.image = NSImage(
-            systemSymbolName: isScanning ? "arrow.clockwise" : "waveform.path", accessibilityDescription: "Swear Stats")
-        statusItem?.button?.image?.isTemplate = true
+        menus?.setSyncing(isScanning)
     }
 
     private func addFolder() {
@@ -355,28 +361,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openConfig() { NSWorkspace.shared.open(configStore.configURL) }
 
     private func installMenus() {
-        let menu = NSMenu()
-        let show = NSMenuItem(title: "Show Swear Stats", action: #selector(showDashboard), keyEquivalent: "0")
-        show.target = self
-        menu.addItem(show)
-        let refresh = NSMenuItem(title: "Refresh", action: #selector(refreshScan), keyEquivalent: "r")
-        refresh.target = self
-        refresh.keyEquivalentModifierMask = [.command]
-        menu.addItem(refresh)
-        let settings = NSMenuItem(title: "Configuration…", action: #selector(openConfig), keyEquivalent: ",")
-        settings.target = self
-        menu.addItem(settings)
-        menu.addItem(.separator())
-        menu.addItem(
-            NSMenuItem(title: "Quit Swear Stats", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        let main = NSMenu()
-        let item = NSMenuItem()
-        item.submenu = menu
-        main.addItem(item)
-        NSApp.mainMenu = main
-        let status = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        status.menu = menu.copy() as? NSMenu
-        status.button?.toolTip = "Swear Stats"
-        statusItem = status
+        menus = AppMenus(
+            desktopBroEnabled: dashboard?.state.desktopBroEnabled == true,
+            onShow: { [weak self] in self?.showDashboard() },
+            onDesktopToggle: { [weak self] in self?.desktopBro?.setEnabled($0) },
+            onRefresh: { [weak self] in self?.refreshScan() },
+            onConfig: { [weak self] in self?.openConfig() })
     }
 }

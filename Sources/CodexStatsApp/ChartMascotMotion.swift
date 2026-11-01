@@ -21,14 +21,16 @@ enum ChartMascotMotion {
     static let spriteHeight: CGFloat = 61
     static let laneHeight: CGFloat = 90
     static let bottleVisualLimit = 12
-    private static let drinkBatchDuration: TimeInterval = 1.5
-    private static let queuedDrinkDuration: TimeInterval = 3
-    private static let gulpShare = 0.48
     private static let visibleDrinkLimit = 4
     private static let walkDuration: TimeInterval = 10
     private static let squatDuration: TimeInterval = 2.8
     private static let gaitFrameDuration: TimeInterval = 0.12
     private static let patrolDuration = 2 * (walkDuration + squatDuration)
+    private static let clipFrameDuration: TimeInterval = 0.12
+    private static let rowdyRestDuration: TimeInterval = 1.5
+    private static let drinkRestDuration: TimeInterval = 1
+    private static let throwFlightDuration: TimeInterval = 0.6
+    private static let throwReleaseFrame = 3
 
     private struct Layout {
         let width: CGFloat
@@ -40,7 +42,7 @@ enum ChartMascotMotion {
     private struct DrinkBeat {
         let pose: Pose
         let frameIndex: Int
-        let throwProgress: Double?
+        let throwElapsed: TimeInterval?
         let pendingThrows: Int
     }
 
@@ -48,6 +50,7 @@ enum ChartMascotMotion {
         snapshot: MascotCycle.Snapshot,
         at date: Date,
         availableWidth: CGFloat,
+        patrolDate: Date? = nil,
         reduceMotion: Bool = false
     ) -> Frame {
         let layout = makeLayout(width: availableWidth)
@@ -55,11 +58,14 @@ enum ChartMascotMotion {
             let elapsed = max(0, date.timeIntervalSince(snapshot.phaseStartedAt))
             return Frame(
                 pose: .sleep, frameIndex: animatedIndex(elapsed, rate: 0.5, pose: .sleep, reduceMotion: reduceMotion),
-                x: layout.homeX, scale: layout.scale)
+                x: reduceMotion
+                    ? layout.homeX : patrolFrame(at: patrolDate ?? snapshot.phaseStartedAt, layout: layout).x,
+                scale: layout.scale)
         }
 
         if let beat = drinkBeat(snapshot: snapshot, at: date, reduceMotion: reduceMotion) {
-            let originDate = snapshot.phase == .drinking ? snapshot.phaseStartedAt : snapshot.lastDrinkAt ?? date
+            let originDate =
+                patrolDate ?? (snapshot.phase == .drinking ? snapshot.phaseStartedAt : snapshot.drinkStartedAt ?? date)
             let x = reduceMotion ? layout.homeX : patrolFrame(at: originDate, layout: layout).x
             return Frame(pose: beat.pose, frameIndex: beat.frameIndex, x: x, scale: layout.scale)
         }
@@ -69,14 +75,18 @@ enum ChartMascotMotion {
             if reduceMotion {
                 return Frame(pose: .squat, frameIndex: 0, x: layout.homeX, scale: layout.scale)
             }
-            return patrolFrame(at: date, layout: layout)
+            return patrolFrame(at: patrolDate ?? date, layout: layout)
         case .buzzing:
             let elapsed = max(0, date.timeIntervalSince(snapshot.phaseStartedAt))
-            let rate = max(0.2, 0.32 - min(snapshot.heat, 24) * 0.0035)
-            let index = animatedIndex(elapsed, rate: rate, pose: .rowdy, reduceMotion: reduceMotion)
-            let sway = reduceMotion ? 0 : CGFloat(sin(elapsed * .pi * 2 / (rate * 6))) * 6 * layout.scale
+            let index = restingLoopIndex(
+                elapsed, frameDuration: clipFrameDuration, restDuration: rowdyRestDuration,
+                pose: .rowdy, reduceMotion: reduceMotion)
+            let heldDate = patrolDate ?? snapshot.phaseStartedAt
+            let heldX = patrolFrame(at: heldDate, layout: layout).x
+            let sway = reduceMotion ? 0 : CGFloat(sin(elapsed * .pi * 2 / 2.22)) * 6 * layout.scale
+            let x = reduceMotion ? layout.homeX : clamped(heldX + sway, in: layout)
             return Frame(
-                pose: .rowdy, frameIndex: index, x: clamped(layout.homeX + sway, in: layout), scale: layout.scale)
+                pose: .rowdy, frameIndex: index, x: x, scale: layout.scale)
         case .sleeping, .drinking:
             return Frame(pose: .squat, frameIndex: 0, x: layout.homeX, scale: layout.scale)
         }
@@ -107,25 +117,25 @@ enum ChartMascotMotion {
         snapshot: MascotCycle.Snapshot,
         at date: Date,
         availableWidth: CGFloat,
+        patrolDate: Date? = nil,
         reduceMotion: Bool = false
     ) -> [BottleProjectile] {
         guard !reduceMotion,
             let beat = drinkBeat(snapshot: snapshot, at: date, reduceMotion: false),
-            let progress = beat.throwProgress
+            let flightElapsed = beat.throwElapsed
         else { return [] }
-        guard progress >= 0.52 else { return [] }
         let layout = makeLayout(width: availableWidth)
-        let originDate = snapshot.phase == .drinking ? snapshot.phaseStartedAt : snapshot.lastDrinkAt ?? date
+        let originDate =
+            patrolDate ?? (snapshot.phase == .drinking ? snapshot.phaseStartedAt : snapshot.drinkStartedAt ?? date)
         let actorX = patrolFrame(at: originDate, layout: layout).x
         let fromX = min(layout.width - 3 * layout.scale, actorX + spriteWidth * layout.scale * 0.82)
         let landing = emptyBottlePositions(count: snapshot.emptyBottles, availableWidth: availableWidth).last
         let toX = landing?.x ?? fromX
         let toY = landing?.y ?? laneHeight - 1
         let visible = min(visibleDrinkLimit, max(0, beat.pendingThrows))
-        let released = max(0, (progress - 0.52) / 0.48)
         return (0..<visible).compactMap { index in
-            let delay = Double(index) * 0.08
-            let delayed = (released - delay) / (1 - delay)
+            let delayedElapsed = flightElapsed - Double(index) * 0.08
+            let delayed = delayedElapsed / throwFlightDuration
             guard (0...1).contains(delayed) else { return nil }
             let x = fromX + (toX - fromX) * delayed
             let y = 45 + (toY - 45) * delayed - 40 * sin(delayed * .pi)
@@ -137,6 +147,7 @@ enum ChartMascotMotion {
         snapshot: MascotCycle.Snapshot,
         at date: Date,
         availableWidth: CGFloat,
+        patrolDate: Date? = nil,
         reduceMotion: Bool = false
     ) -> Int {
         max(
@@ -145,8 +156,19 @@ enum ChartMascotMotion {
                 bottleVisualLimit,
                 snapshot.emptyBottles
                     - thrownBottlePositions(
-                        snapshot: snapshot, at: date, availableWidth: availableWidth, reduceMotion: reduceMotion
+                        snapshot: snapshot, at: date, availableWidth: availableWidth,
+                        patrolDate: patrolDate, reduceMotion: reduceMotion
                     ).count))
+    }
+
+    static func pausesPatrol(snapshot: MascotCycle.Snapshot, at date: Date) -> Bool {
+        switch snapshot.phase {
+        case .buzzing, .sleeping, .drinking:
+            return true
+        case .settled, .sobering:
+            guard let drinkStartedAt = snapshot.drinkStartedAt else { return false }
+            return date < drinkStartedAt.addingTimeInterval(MascotCycle.Timing.freshDrinkSceneDuration)
+        }
     }
 
     private enum StackSide { case left, right }
@@ -173,24 +195,34 @@ enum ChartMascotMotion {
     }
 
     private static func drinkBeat(snapshot: MascotCycle.Snapshot, at date: Date, reduceMotion: Bool) -> DrinkBeat? {
-        guard let lastDrinkAt = snapshot.lastDrinkAt else { return nil }
+        guard let drinkStartedAt = snapshot.drinkStartedAt else { return nil }
         let queued = snapshot.phase == .drinking
-        let duration = queued ? queuedDrinkDuration : drinkBatchDuration
-        let elapsed = max(0, date.timeIntervalSince(queued ? snapshot.phaseStartedAt : lastDrinkAt))
-        guard elapsed < duration else { return nil }
+        let duration = queued ? MascotCycle.Timing.wakeDrinkSceneDuration : MascotCycle.Timing.freshDrinkSceneDuration
+        let sceneStartedAt = queued ? snapshot.phaseStartedAt : drinkStartedAt
+        guard date < sceneStartedAt.addingTimeInterval(duration) else { return nil }
+        let elapsed = max(0, date.timeIntervalSince(sceneStartedAt))
 
         let count = min(visibleDrinkLimit, max(1, snapshot.drinkHits))
-        let segmentDuration = duration / Double(count)
-        let withinSegment = elapsed.truncatingRemainder(dividingBy: segmentDuration)
-        let gulpDuration = segmentDuration * gulpShare
-        if withinSegment < gulpDuration {
+        let gulpDuration = Double(frameCount(for: .drink)) * clipFrameDuration
+        if elapsed < gulpDuration {
             let index = animatedIndex(
-                withinSegment, rate: max(0.08, gulpDuration / 6), pose: .drink, reduceMotion: reduceMotion)
-            return DrinkBeat(pose: .drink, frameIndex: index, throwProgress: nil, pendingThrows: count)
+                elapsed, rate: clipFrameDuration, pose: .drink, reduceMotion: reduceMotion)
+            return DrinkBeat(pose: .drink, frameIndex: index, throwElapsed: nil, pendingThrows: count)
         }
-        let throwProgress = (withinSegment - gulpDuration) / (segmentDuration - gulpDuration)
-        let index = animatedIndex(throwProgress * 0.65, rate: 0.11, pose: .throwBottle, reduceMotion: reduceMotion)
-        return DrinkBeat(pose: .throwBottle, frameIndex: index, throwProgress: throwProgress, pendingThrows: count)
+        let throwStart = gulpDuration + drinkRestDuration
+        guard elapsed >= throwStart else {
+            return DrinkBeat(
+                pose: .drink, frameIndex: reduceMotion ? 0 : frameCount(for: .drink) - 1,
+                throwElapsed: nil, pendingThrows: count)
+        }
+        let throwElapsed = elapsed - throwStart
+        let throwIndex = min(frameCount(for: .throwBottle) - 1, Int(throwElapsed / clipFrameDuration))
+        let flightElapsed = throwElapsed - Double(throwReleaseFrame) * clipFrameDuration
+        return DrinkBeat(
+            pose: .throwBottle,
+            frameIndex: reduceMotion ? 0 : throwIndex,
+            throwElapsed: (0...throwFlightDuration).contains(flightElapsed) ? flightElapsed : nil,
+            pendingThrows: count)
     }
 
     private static func animatedIndex(_ elapsed: TimeInterval, rate: TimeInterval, pose: Pose, reduceMotion: Bool)
@@ -198,6 +230,22 @@ enum ChartMascotMotion {
     {
         guard !reduceMotion, rate > 0 else { return 0 }
         return Int(max(0, elapsed) / rate) % frameCount(for: pose)
+    }
+
+    private static func restingLoopIndex(
+        _ elapsed: TimeInterval,
+        frameDuration: TimeInterval,
+        restDuration: TimeInterval,
+        pose: Pose,
+        reduceMotion: Bool
+    ) -> Int {
+        guard !reduceMotion, frameDuration > 0 else { return 0 }
+        let lastFrame = frameCount(for: pose) - 1
+        let clipDuration = Double(frameCount(for: pose)) * frameDuration
+        let cycleDuration = clipDuration + restDuration
+        let withinCycle = max(0, elapsed).truncatingRemainder(dividingBy: cycleDuration)
+        guard withinCycle < clipDuration else { return lastFrame }
+        return min(lastFrame, Int(withinCycle / frameDuration))
     }
 
     private static func patrolFrame(at date: Date, layout: Layout) -> Frame {
@@ -248,5 +296,29 @@ enum ChartMascotMotion {
 
     private static func clamped(_ x: CGFloat, in layout: Layout) -> CGFloat {
         min(max(0, x), max(0, layout.width - spriteWidth * layout.scale))
+    }
+
+}
+
+@MainActor
+final class MascotWalkClock {
+    private var patrolElapsed: TimeInterval
+    private var lastAdvancedAt: Date
+    private var isPaused = false
+
+    init(now: Date = Date()) {
+        patrolElapsed = now.timeIntervalSinceReferenceDate
+        lastAdvancedAt = now
+    }
+
+    func advance(at date: Date, paused: Bool) -> Date {
+        guard date >= lastAdvancedAt else { return Date(timeIntervalSinceReferenceDate: patrolElapsed) }
+        let timestamp = date
+        if !isPaused {
+            patrolElapsed += timestamp.timeIntervalSince(lastAdvancedAt)
+        }
+        lastAdvancedAt = timestamp
+        isPaused = paused
+        return Date(timeIntervalSinceReferenceDate: patrolElapsed)
     }
 }

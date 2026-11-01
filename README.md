@@ -6,7 +6,7 @@
 
 - **Find the hottest threads.** A blue-to-red sidebar accounts for both profanity frequency and conversation size.
 - **Compare models and periods.** Filter the same totals, word rankings, and timeline; drag across the chart to inspect a time range.
-- **Catch new outbursts.** Bro turns fresh profanity into bottles: drinks, throws empties, gets rowdy, sleeps, and sobers as you slow down. Optional “Ouch!” sounds get slower and lower as fresh profanity rises. Burst reminders add English joke notifications.
+- **Catch new outbursts.** Bro turns fresh profanity into bottles: drinks, throws empties, gets rowdy, sleeps, and sobers as you slow down. Move him above other apps with **Desktop Bro** in the app menu. Optional “Ouch!” sounds get slower and lower as fresh profanity rises. Burst reminders add English joke notifications.
 - **Keep your archive local.** Source logs stay read-only. An incremental index reads new records without rescanning the entire archive.
 
 ![Swear Stats dashboard with thread heat, model and date filters, a timeline, and word rankings. Synthetic example data.](docs/images/dashboard.png)
@@ -72,6 +72,8 @@ For a missed word or false positive, include the word, language, and a small syn
 Read the [Swift guidelines](docs/swift-guidelines.md) and [analytics design](openspec/changes/ai-agnostic-incremental-analytics/design.md) before changing the implementation. `CodexStatsCore` owns parsing, classification, indexing, and analytics; `CodexStatsApp` owns the native dashboard and feedback.
 
 The [mascot specification](openspec/specs/mascot-cycle/spec.md) defines live bottle accounting, sleep, recovery, and presentation invariants.
+
+The [portable runtime proposal](openspec/changes/portable-mascot-runtime/design.md) describes planned Windows/Linux support, downloadable appearances, and contextual detectors; these capabilities are not implemented yet.
 
 ## License
 

@@ -3,27 +3,32 @@ import SwiftUI
 
 struct ChartMascotView: View {
     @ObservedObject var state: DashboardState
+    var showsFloor = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: reduceMotion ? 0.25 : 1 / 12)) { timeline in
+        TimelineView(.periodic(from: .now, by: reduceMotion ? 0.25 : 1 / 30)) { timeline in
             GeometryReader { geometry in
                 let snapshot = state.mascotCycle.snapshot(at: timeline.date)
+                let patrolDate = state.mascotPatrolDate(snapshot: snapshot, at: timeline.date)
                 let frame = ChartMascotMotion.frame(
                     snapshot: snapshot,
                     at: timeline.date,
                     availableWidth: geometry.size.width,
+                    patrolDate: patrolDate,
                     reduceMotion: reduceMotion)
                 ZStack(alignment: .topLeading) {
-                    floor
+                    if showsFloor { floor }
                     bottleStacks(
                         snapshot: snapshot,
                         date: timeline.date,
+                        patrolDate: patrolDate,
                         width: geometry.size.width,
                         reduceMotion: reduceMotion)
                     tossedBottles(
                         snapshot: snapshot,
                         date: timeline.date,
+                        patrolDate: patrolDate,
                         width: geometry.size.width,
                         reduceMotion: reduceMotion)
                     if let image = ChartMascotImages.image(pose: frame.pose, index: frame.frameIndex) {
@@ -57,12 +62,13 @@ struct ChartMascotView: View {
     private func bottleStacks(
         snapshot: MascotCycle.Snapshot,
         date: Date,
+        patrolDate: Date,
         width: CGFloat,
         reduceMotion: Bool
     ) -> some View {
         let queued = ChartMascotMotion.queuedBottlePositions(count: snapshot.bottleCount, availableWidth: width)
         let emptyCount = ChartMascotMotion.visibleEmptyBottleCount(
-            snapshot: snapshot, at: date, availableWidth: width, reduceMotion: reduceMotion)
+            snapshot: snapshot, at: date, availableWidth: width, patrolDate: patrolDate, reduceMotion: reduceMotion)
         let empties = ChartMascotMotion.emptyBottlePositions(count: emptyCount, availableWidth: width)
         return Canvas { context, _ in
             for (index, position) in queued.enumerated() {
@@ -74,7 +80,7 @@ struct ChartMascotView: View {
                     at: position,
                     color: bottleColor(index),
                     empty: true,
-                    opacity: min(1, snapshot.heat / 4))
+                    opacity: min(1, snapshot.heat / 0.5))
             }
         }
         .frame(height: ChartMascotMotion.laneHeight)
@@ -85,11 +91,12 @@ struct ChartMascotView: View {
     private func tossedBottles(
         snapshot: MascotCycle.Snapshot,
         date: Date,
+        patrolDate: Date,
         width: CGFloat,
         reduceMotion: Bool
     ) -> some View {
         let projectiles = ChartMascotMotion.thrownBottlePositions(
-            snapshot: snapshot, at: date, availableWidth: width, reduceMotion: reduceMotion)
+            snapshot: snapshot, at: date, availableWidth: width, patrolDate: patrolDate, reduceMotion: reduceMotion)
         return Canvas { context, _ in
             for (index, position) in projectiles.enumerated() {
                 drawBottle(in: context, at: position, color: bottleColor(index))

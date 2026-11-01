@@ -232,7 +232,7 @@ struct DashboardView: View {
     private var mascotTrack: some View {
         ZStack(alignment: .bottom) {
             Rectangle().fill(Color.secondary.opacity(0.18)).frame(height: 1)
-            ChartMascotView(state: state)
+            ChartMascotView(state: state).opacity(state.desktopBroEnabled ? 0 : 1)
         }
         .padding(.leading, 44)
         .padding(.trailing, 12)

@@ -21,7 +21,18 @@ final class DashboardState: ObservableObject {
     @Published var notificationStatus = ""
     @Published var soundEnabled = false
     @Published var mascotCycle = MascotCycle()
+    @Published var desktopBroEnabled = false
     @Published var showFolders = false
+
+    private let mascotWalkClock = MascotWalkClock()
+
+    func mascotPatrolDate(
+        snapshot: MascotCycle.Snapshot,
+        at date: Date
+    ) -> Date {
+        let paused = ChartMascotMotion.pausesPatrol(snapshot: snapshot, at: date)
+        return mascotWalkClock.advance(at: date, paused: paused)
+    }
 }
 
 @MainActor
