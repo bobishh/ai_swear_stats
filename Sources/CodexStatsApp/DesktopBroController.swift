@@ -146,7 +146,8 @@ final class DesktopBroController {
         let frame = ChartMascotMotion.frame(
             snapshot: snapshot, at: now, availableWidth: 320,
             patrolDate: patrolDate,
-            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+            appearance: state.mascotLook.appearance)
         let actorRect = Self.actorFrame(panelOrigin: panel.frame.origin, actorX: frame.x)
         panel.ignoresMouseEvents = Self.ignoresMouse(at: point, actorFrame: actorRect)
     }
@@ -165,9 +166,12 @@ final class DesktopBroController {
 
     private func showContextMenu(_ event: NSEvent, in view: NSView) {
         let menu = NSMenu()
-        let hideItem = NSMenuItem(title: "Hide Bro", action: #selector(hideFromMenu), keyEquivalent: "")
+        let hideItem = NSMenuItem(title: "Hide mascot", action: #selector(hideFromMenu), keyEquivalent: "")
         hideItem.target = self
         menu.addItem(hideItem)
+        let appearanceItem = NSMenuItem(title: "Mascot…", action: #selector(customizeFromMenu), keyEquivalent: "")
+        appearanceItem.target = self
+        menu.addItem(appearanceItem)
         let dashboardItem = NSMenuItem(
             title: "Show Swear Stats", action: #selector(openDashboardFromMenu), keyEquivalent: "")
         dashboardItem.target = self
@@ -177,6 +181,10 @@ final class DesktopBroController {
 
     @objc private func hideFromMenu() { hide() }
     @objc private func openDashboardFromMenu() { openDashboard() }
+    @objc private func customizeFromMenu() {
+        openDashboard()
+        state.showMascotSettings = true
+    }
 }
 
 @MainActor

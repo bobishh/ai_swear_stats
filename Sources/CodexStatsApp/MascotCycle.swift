@@ -7,7 +7,6 @@ struct MascotCycle: Equatable, Sendable {
         static let rowdyBuildup: TimeInterval = 10
         static let sleepDuration: TimeInterval = 40
         static let freshDrinkSceneDuration: TimeInterval = 4.8
-        static let wakeDrinkSceneDuration: TimeInterval = 8
     }
 
     enum Phase: Equatable, Sendable {
@@ -37,6 +36,7 @@ struct MascotCycle: Equatable, Sendable {
     private(set) var drinkHits = 0
     private var lastAdvancedAt: Date
     private var sleepDueAt: Date?
+    private var drinkEndsAt: Date?
 
     private static let buzzThreshold = 4.0
     private static let sleepThreshold = 12.0
@@ -52,17 +52,9 @@ struct MascotCycle: Equatable, Sendable {
         let eventDate = max(date, lastAdvancedAt)
         advance(to: eventDate)
         totalReceived += hits
-        switch phase {
-        case .sleeping:
-            bottleCount += hits
-        case .settled, .buzzing, .sobering, .drinking:
-            drink(hits: hits, at: eventDate)
-            if phase != .drinking {
-                setAwakePhase(at: eventDate)
-            }
-            if heat >= Self.sleepThreshold, sleepDueAt == nil {
-                sleepDueAt = eventDate.addingTimeInterval(Timing.rowdyBuildup)
-            }
+        bottleCount += hits
+        if phase != .sleeping, drinkEndsAt == nil, sleepDueAt == nil {
+            startDrink(at: eventDate)
         }
     }
 
@@ -76,15 +68,18 @@ struct MascotCycle: Equatable, Sendable {
             drinkStartedAt: projection.drinkStartedAt, drinkHits: projection.drinkHits)
     }
 
-    private mutating func drink(hits: Int, at date: Date) {
-        totalDrunk += hits
-        emptyBottles += hits
-        heat = min(Self.maximumHeat, heat + Double(hits))
-        if let drinkStartedAt, date.timeIntervalSince(drinkStartedAt) < Timing.freshDrinkSceneDuration {
-            drinkHits += hits
-        } else {
-            drinkStartedAt = date
-            drinkHits = hits
+    private mutating func startDrink(at date: Date) {
+        guard bottleCount > 0 else { return }
+        bottleCount -= 1
+        totalDrunk += 1
+        emptyBottles += 1
+        heat = min(Self.maximumHeat, heat + 1)
+        drinkStartedAt = date
+        drinkHits = 1
+        drinkEndsAt = date.addingTimeInterval(Timing.freshDrinkSceneDuration)
+        setPhase(.drinking, at: date)
+        if heat >= Self.sleepThreshold, sleepDueAt == nil {
+            sleepDueAt = date.addingTimeInterval(Timing.freshDrinkSceneDuration + Timing.rowdyBuildup)
         }
     }
 
@@ -105,11 +100,7 @@ struct MascotCycle: Equatable, Sendable {
                 continue
             }
 
-            let drinkingEndsAt =
-                phase == .drinking
-                ? phaseStartedAt.addingTimeInterval(Timing.wakeDrinkSceneDuration)
-                : nil
-            let boundary = [sleepDueAt, drinkingEndsAt].compactMap { $0 }.filter { $0 <= target }.min()
+            let boundary = [sleepDueAt, drinkEndsAt].compactMap { $0 }.filter { $0 <= target }.min()
             let segmentEnd = boundary ?? target
             heat = max(0, heat - segmentEnd.timeIntervalSince(cursor) * Timing.awakeCoolingRate)
             cursor = segmentEnd
@@ -119,13 +110,10 @@ struct MascotCycle: Equatable, Sendable {
                 setPhase(.sleeping, at: sleepDueAt)
                 continue
             }
-            if let drinkingEndsAt, drinkingEndsAt <= cursor {
-                if heat >= Self.sleepThreshold {
-                    setPhase(.sleeping, at: drinkingEndsAt)
-                    sleepDueAt = nil
-                } else {
-                    setAwakePhase(at: drinkingEndsAt)
-                }
+            if let drinkEndsAt, drinkEndsAt <= cursor {
+                self.drinkEndsAt = nil
+                setAwakePhase(at: cursor)
+                if sleepDueAt == nil { startDrink(at: cursor) }
                 continue
             }
             if boundary == nil { break }
@@ -138,17 +126,8 @@ struct MascotCycle: Equatable, Sendable {
 
     private mutating func wake(at wakeAt: Date) {
         if bottleCount > 0 {
-            let queued = bottleCount
-            bottleCount = 0
-            totalDrunk += queued
-            emptyBottles += queued
-            heat = min(Self.maximumHeat, heat + Double(queued))
-            drinkStartedAt = wakeAt
-            drinkHits = queued
-            setPhase(.drinking, at: wakeAt)
-            if heat >= Self.sleepThreshold {
-                sleepDueAt = wakeAt.addingTimeInterval(Timing.rowdyBuildup)
-            }
+            sleepDueAt = nil
+            startDrink(at: wakeAt)
         } else {
             sleepDueAt = nil
             if heat >= Self.sleepThreshold {

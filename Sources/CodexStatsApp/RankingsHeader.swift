@@ -36,17 +36,20 @@ struct RankingsHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 16) {
-                Text("Words & families").font(.headline).fixedSize()
-                Picker("Ranking", selection: $stems) {
-                    Text("Families").tag(true)
-                    Text("Words").tag(false)
-                }
-                .pickerStyle(.segmented).labelsHidden().frame(width: 180)
+                Text("Words & families").font(.system(size: 14, weight: .bold)).fixedSize()
+                HStack(spacing: 4) {
+                    Button("Families") { stems = true }
+                        .buttonStyle(AquaButtonStyle(accented: stems))
+                        .accessibilityValue(stems ? "Selected" : "")
+                    Button("Words") { stems = false }
+                        .buttonStyle(AquaButtonStyle(accented: !stems))
+                        .accessibilityValue(stems ? "" : "Selected")
+                }.frame(width: 180)
                 Spacer(minLength: 0)
             }
             HStack(spacing: 10) {
                 TextField("Search words or families", text: $search)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.plain).aquaTextWell()
                     .accessibilityIdentifier("rankingSearch")
                 Text(resultStatus).font(.caption).foregroundStyle(.secondary).fixedSize()
             }

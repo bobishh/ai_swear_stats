@@ -3,7 +3,7 @@ import Testing
 @testable import CodexStatsApp
 
 struct ChartMascotMotionTests {
-    private let start = Date(timeIntervalSince1970: 1_800_000_000)
+    private let start = Date(timeIntervalSinceReferenceDate: 0)
 
     @Test("Given calm state, when time advances, then mascot walks both ways and squats at each end")
     func calmPatrolReturns() {
@@ -15,7 +15,7 @@ struct ChartMascotMotionTests {
         let inbound = ChartMascotMotion.frame(
             snapshot: snapshot, at: start.addingTimeInterval(17.8), availableWidth: 480)
         let leftSquat = ChartMascotMotion.frame(
-            snapshot: snapshot, at: start.addingTimeInterval(24.2), availableWidth: 480)
+            snapshot: snapshot, at: start.addingTimeInterval(29.4), availableWidth: 480)
 
         #expect(outbound.pose == .walkRight)
         #expect(rightSquat.pose == .squat)
@@ -278,17 +278,18 @@ struct ChartMascotMotionTests {
         "Given sleep with queued bottles, when sleep timer expires, then reduced-motion projection follows wake phase")
     func reducedMotionStillProjectsTimedWake() {
         var cycle = MascotCycle(now: start)
-        cycle.receive(hits: 12, at: start)
-        let sleepStart = start.addingTimeInterval(10)
-        #expect(cycle.snapshot(at: sleepStart).phase == .sleeping)
-        cycle.receive(hits: 2, at: start.addingTimeInterval(11))
+        cycle.receive(hits: 40, at: start)
+        let sleep = cycle.snapshot(at: start.addingTimeInterval(100))
+        #expect(sleep.phase == .sleeping)
+        let wakeDate = sleep.phaseStartedAt.addingTimeInterval(40)
+        cycle.receive(hits: 2, at: start.addingTimeInterval(100))
 
-        let beforeWake = cycle.snapshot(at: start.addingTimeInterval(49.9))
-        let afterWake = cycle.snapshot(at: start.addingTimeInterval(50))
+        let beforeWake = cycle.snapshot(at: wakeDate.addingTimeInterval(-0.1))
+        let afterWake = cycle.snapshot(at: wakeDate.addingTimeInterval(0.01))
         let sleepingFrame = ChartMascotMotion.frame(
-            snapshot: beforeWake, at: start.addingTimeInterval(49.9), availableWidth: 480, reduceMotion: true)
+            snapshot: beforeWake, at: wakeDate.addingTimeInterval(-0.1), availableWidth: 480, reduceMotion: true)
         let wakingFrame = ChartMascotMotion.frame(
-            snapshot: afterWake, at: start.addingTimeInterval(50), availableWidth: 480, reduceMotion: true)
+            snapshot: afterWake, at: wakeDate.addingTimeInterval(0.01), availableWidth: 480, reduceMotion: true)
 
         #expect(sleepingFrame.pose == .sleep)
         #expect(afterWake.phase == .drinking)

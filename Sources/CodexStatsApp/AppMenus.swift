@@ -6,6 +6,7 @@ final class AppMenus: NSObject {
     private let onDesktopToggle: (Bool) -> Void
     private let onRefresh: () -> Void
     private let onConfig: () -> Void
+    private let onMascot: () -> Void
     private var desktopBroItems: [NSMenuItem] = []
     private let statusItem: NSStatusItem
 
@@ -14,20 +15,23 @@ final class AppMenus: NSObject {
         onShow: @escaping () -> Void,
         onDesktopToggle: @escaping (Bool) -> Void,
         onRefresh: @escaping () -> Void,
-        onConfig: @escaping () -> Void
+        onConfig: @escaping () -> Void,
+        onMascot: @escaping () -> Void = {}
     ) {
         self.onShow = onShow
         self.onDesktopToggle = onDesktopToggle
         self.onRefresh = onRefresh
         self.onConfig = onConfig
+        self.onMascot = onMascot
 
         let menu = NSMenu()
         let show = NSMenuItem(title: "Show Swear Stats", action: #selector(showDashboard), keyEquivalent: "0")
         menu.addItem(show)
-        let desktopBro = NSMenuItem(title: "Desktop Bro", action: #selector(toggleDesktopBro), keyEquivalent: "")
+        let desktopBro = NSMenuItem(title: "Desktop mascot", action: #selector(toggleDesktopBro), keyEquivalent: "")
         desktopBro.state = desktopBroEnabled ? .on : .off
         desktopBroItems.append(desktopBro)
         menu.addItem(desktopBro)
+        menu.addItem(NSMenuItem(title: "Mascot…", action: #selector(openMascot), keyEquivalent: ""))
         let refresh = NSMenuItem(title: "Refresh", action: #selector(refresh), keyEquivalent: "r")
         refresh.keyEquivalentModifierMask = [.command]
         menu.addItem(refresh)
@@ -72,4 +76,5 @@ final class AppMenus: NSObject {
     }
     @objc private func refresh() { onRefresh() }
     @objc private func openConfig() { onConfig() }
+    @objc private func openMascot() { onMascot() }
 }

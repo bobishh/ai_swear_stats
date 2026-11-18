@@ -1,0 +1,13 @@
+Create a custom Swear Stats mascot as an editable local folder. Use my character description and references. Export a starter from Mascot → Export starter… first; keep its manifest.json structure.
+
+Draw transparent RGBA PNG frames, exactly 192 × 208 pixels. Keep the feet at (96, 204), the camera fixed, and the face, proportions, costume and pixel density consistent. Leave room for hands and props. Draw no background, floor, shadow, captions or atlas borders. Each PNG contains one complete frame.
+
+Required clips: walk-left, walk-right, squat, drink, throw, rowdy, sleep. The starter has 8 walking frames per direction, 6 frames each for squat/drink/throw/rowdy, and 4 sleeping frames. Keep those counts unless the animation benefits from a change; each clip accepts 2–32 frames. Preserve folder names and ordered frame paths in manifest.json. No scripts, symlinks or external paths.
+
+Animate walking with a complete looping gait. Squat moves from standing to sitting on heels. Drink lifts ONE small green bottle, takes a gulp, lowers it. Throw faces RIGHT, draws back, releases ONE bottle at releaseFrame (zero-based), follows through and rests; do not draw the released bottle because the app animates its flight. Rowdy is a small grounded dance, without travelling or jumping. Sleep uses a seated resting pose with gentle breathing. Mirror only the walking direction when appropriate; never mirror the right-facing throw.
+
+Set formatVersion to 1, name to my character's name, and canvas to {"width":192,"height":208,"footX":96,"footY":204}. Each clips entry contains frames (ordered relative PNG paths) and frameDuration in seconds; throw also contains releaseFrame. Frame durations must be 0.04–1 seconds. Natural playback is about 0.12 per frame, sleep about 0.5. The app owns pauses BETWEEN actions and one-bottle-at-a-time accounting; do not bake long resting pauses into repeated PNGs. Drink duration + 1 second pause + throw duration and flight must fit the 4.8-second bottle cycle.
+
+Preview all frames together on light and dark backgrounds. Check no clipped limbs, adjacent atlas fragments, face drift, jittering feet, matte halos, opaque background or duplicate standing frames replacing a walk cycle. Use image generation for original artwork; splitting an atlas into registered PNGs is a mechanical export step. If using an atlas, export the final individual PNGs before delivery.
+
+Deliver the folder with manifest.json and PNG frames. In Swear Stats choose Mascot → Use folder…; after local edits press Reload. A failed validation must leave the currently selected mascot unchanged. Do not modify conversation logs, the bottle behavior or app source just to replace artwork.

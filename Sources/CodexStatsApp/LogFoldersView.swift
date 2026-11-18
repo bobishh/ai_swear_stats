@@ -20,8 +20,14 @@ struct LogFoldersView: View {
                 Button("Add log folder…", action: actions.addFolder)
                 Button("Configuration…", action: actions.openConfig)
                 Spacer()
-                Button("Done") { state.showFolders = false }.keyboardShortcut(.defaultAction)
+                Button("Done") { state.showFolders = false }
+                    .buttonStyle(AquaButtonStyle(accented: true)).keyboardShortcut(.defaultAction)
             }
-        }.padding(24).frame(width: 600)
+        }
+        .padding(24).frame(width: 600)
+        .background(AquaPinstripes())
+        .foregroundStyle(AquaTheme.ink)
+        .buttonStyle(AquaButtonStyle())
+        .preferredColorScheme(.light)
     }
 }

@@ -19,21 +19,32 @@ struct ThreadRowView: View {
                 Text(thread.profaneMessageShare.formatted(.percent.precision(.fractionLength(0))))
                     .font(.caption.weight(.semibold)).monospacedDigit().fixedSize()
                     .padding(.horizontal, 5).padding(.vertical, 2)
-                    .background(tint.opacity(0.16), in: Capsule())
+                    .background(
+                        LinearGradient(colors: [.white, tint.opacity(0.28)], startPoint: .top, endPoint: .bottom),
+                        in: Capsule()
+                    )
+                    .overlay(Capsule().strokeBorder(tint.opacity(0.5), lineWidth: 0.5))
             }
             Text("\(thread.provider) · \(thread.messages) messages · \(thread.hits) hits")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(10).padding(.leading, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(tint.opacity(0.08 + 0.07 * heat), in: RoundedRectangle(cornerRadius: 8))
+        .foregroundStyle(AquaTheme.ink)
+        .background(
+            LinearGradient(
+                colors: selected
+                    ? [Color(red: 0.88, green: 0.95, blue: 1), Color(red: 0.66, green: 0.82, blue: 0.98)]
+                    : [.white, tint.opacity(0.07 + 0.06 * heat)],
+                startPoint: .top, endPoint: .bottom)
+        )
         .overlay(alignment: .leading) {
-            Capsule().fill(tint).frame(width: 3).padding(.vertical, 9).padding(.leading, 5)
+            Rectangle().fill(tint).frame(width: 3).padding(.vertical, 7).padding(.leading, 4)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 2)
+            Rectangle().strokeBorder(selected ? AquaTheme.blue.opacity(0.75) : Color(white: 0.88), lineWidth: 0.5)
         }
-        .contentShape(RoundedRectangle(cornerRadius: 8))
+        .contentShape(Rectangle())
         .help("\(thread.profaneMessages) of \(thread.messages) messages contain profanity.")
         .accessibilityElement(children: .combine)
         .accessibilityValue(selected ? "Selected" : "")

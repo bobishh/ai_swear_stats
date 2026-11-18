@@ -29,7 +29,7 @@ struct SourcesView: View {
                                         messages: snapshot.sourceMessageCounts[source.path, default: 0])
                                     Divider()
                                 }
-                            }
+                            }.background(AquaScrollChrome())
                         }
                         .frame(height: min(300, CGFloat(issues.count) * 85))
                     }
@@ -39,7 +39,7 @@ struct SourcesView: View {
                 Label(
                     "Source issues · \(issues.count + snapshot.folderWarnings.count)",
                     systemImage: "exclamationmark.triangle")
-            }
+            }.aquaPanel()
         }
     }
 }

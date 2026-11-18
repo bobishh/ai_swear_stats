@@ -42,7 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onRemoveFolder: { [weak self] path in self?.removeFolder(path) },
             onNotifications: { [weak self] enabled in self?.setNotifications(enabled) },
             onSound: { [weak self] enabled in self?.setSound(enabled) },
-            onPreviewSound: { [weak self] in self?.previewSound() })
+            onPreviewSound: { [weak self] in self?.previewSound() },
+            onDesktopMascot: { [weak self] in self?.desktopBro?.setEnabled($0) })
         if let dashboard {
             dashboard.state.notificationsEnabled = config.notificationsEnabled
             dashboard.state.soundEnabled = config.soundEnabled
@@ -366,6 +367,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onShow: { [weak self] in self?.showDashboard() },
             onDesktopToggle: { [weak self] in self?.desktopBro?.setEnabled($0) },
             onRefresh: { [weak self] in self?.refreshScan() },
-            onConfig: { [weak self] in self?.openConfig() })
+            onConfig: { [weak self] in self?.openConfig() },
+            onMascot: { [weak self] in
+                self?.showDashboard()
+                self?.dashboard?.state.showMascotSettings = true
+            })
     }
 }

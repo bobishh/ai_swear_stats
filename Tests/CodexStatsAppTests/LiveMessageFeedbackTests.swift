@@ -70,8 +70,10 @@ struct LiveMessageFeedbackTests {
                 }
             })
         #expect(reactionHits == 5)
-        #expect(mascotCycle.snapshot(at: now).totalDrunk == 5)
-        #expect(mascotCycle.snapshot(at: now).phase == .buzzing)
+        #expect(mascotCycle.snapshot(at: now).totalReceived == 5)
+        #expect(mascotCycle.snapshot(at: now).totalDrunk == 1)
+        #expect(mascotCycle.snapshot(at: now).bottleCount == 4)
+        #expect(mascotCycle.snapshot(at: now).phase == .drinking)
         #expect(notificationBatches == 1)
         #expect(reminders == 1)
     }

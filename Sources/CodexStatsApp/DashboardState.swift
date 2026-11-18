@@ -23,8 +23,39 @@ final class DashboardState: ObservableObject {
     @Published var mascotCycle = MascotCycle()
     @Published var desktopBroEnabled = false
     @Published var showFolders = false
+    @Published var showMascotSettings = false
+    @Published var mascotLook = MascotLook.builtIn
+    @Published var mascotAppearanceError: String?
 
     private let mascotWalkClock = MascotWalkClock()
+    private let defaults: UserDefaults
+    private static let appearancePreference = "mascotAppearanceFolder"
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        if let path = defaults.string(forKey: Self.appearancePreference) {
+            do { try selectMascot(from: URL(fileURLWithPath: path)) } catch {
+                mascotAppearanceError = error.localizedDescription
+            }
+        }
+    }
+
+    func selectMascot(from folder: URL) throws {
+        let appearance = try MascotAppearance.load(from: folder)
+        let look = MascotLook(appearance: appearance)
+        guard look.isComplete else {
+            throw MascotAppearance.InvalidPackage(reason: "Some PNG frames could not be opened.")
+        }
+        mascotLook = look
+        mascotAppearanceError = nil
+        defaults.set(folder.path, forKey: Self.appearancePreference)
+    }
+
+    func resetMascot() {
+        mascotLook = .builtIn
+        mascotAppearanceError = nil
+        defaults.removeObject(forKey: Self.appearancePreference)
+    }
 
     func mascotPatrolDate(
         snapshot: MascotCycle.Snapshot,
@@ -44,4 +75,5 @@ struct DashboardActions {
     var notifications: (Bool) -> Void
     var sound: (Bool) -> Void
     var previewSound: () -> Void
+    var desktopMascot: (Bool) -> Void = { _ in }
 }

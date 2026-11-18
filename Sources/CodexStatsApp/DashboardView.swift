@@ -15,45 +15,75 @@ struct DashboardView: View {
         HSplitView {
             sidebar.frame(minWidth: 210, idealWidth: 245, maxWidth: 320)
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 14) {
                     header
-                    status
+                    AquaStatusRow(error: state.error)
                     metrics
-                    intensity
-                    rankings
+                    intensity.aquaPanel()
+                    rankings.aquaPanel()
                     SourcesView(snapshot: state.snapshot)
-                }.padding(24)
-            }.frame(minWidth: 640)
+                }
+                .padding(18)
+                .background(AquaScrollChrome())
+            }.frame(minWidth: 668)
         }
+        .background(AquaPinstripes())
+        .foregroundStyle(AquaTheme.ink)
+        .font(.system(size: 13))
+        .tint(AquaTheme.blue)
+        .buttonStyle(AquaButtonStyle())
+        .toggleStyle(AquaCheckboxStyle())
+        .preferredColorScheme(.light)
         .sheet(isPresented: $state.showFolders) { LogFoldersView(state: state, actions: actions) }
+        .sheet(isPresented: $state.showMascotSettings) { MascotSettingsView(state: state, actions: actions) }
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                if let logo = AppResources.sidebarLogo {
-                    Image(nsImage: logo).resizable().interpolation(.none).frame(width: 28, height: 28)
+                if let logo = state.mascotLook.image(pose: .squat, index: 0) {
+                    Image(nsImage: logo).resizable().interpolation(.none).frame(width: 30, height: 30)
                 } else {
-                    Image(systemName: "waveform.path").frame(width: 28, height: 28)
+                    Image(systemName: "waveform.path").frame(width: 30, height: 30)
                 }
-                Text("Swear Stats").font(.title2.bold())
+                Text("Swear Stats").font(.system(size: 18, weight: .bold))
+                    .shadow(color: .white, radius: 0, y: 1)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Swear Stats")
-            .padding(.top, 12)
+            .padding(.vertical, 6)
             Button("All threads") {
                 var filter = state.filter
                 filter.thread = nil
                 actions.filter(filter)
-            }.buttonStyle(.bordered)
-            Text("THREADS · \(state.threads.count)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            Picker("Sort", selection: $threadSort) {
-                ForEach(ThreadSortOrder.allCases) { order in
-                    Text(order.title).tag(order)
-                }
+            }.buttonStyle(AquaButtonStyle(accented: state.filter.thread == nil))
+            HStack {
+                Text("Threads · \(state.threads.count)").font(.caption.weight(.semibold))
+                Spacer(minLength: 0)
+                ThreadHeatLegend()
             }
-            ThreadHeatLegend()
-            List {
+            AquaPopUp(
+                title: "Sort", selection: $threadSort,
+                choices: ThreadSortOrder.allCases.map { AquaChoice(value: $0, title: $0.title) })
+            threadList
+            HStack(spacing: 6) {
+                Button("Log folders…") { state.showFolders = true }
+                Button("Mascot…") { state.showMascotSettings = true }
+            }
+            Toggle(
+                "Burst reminders",
+                isOn: Binding(get: { state.notificationsEnabled }, set: { actions.notifications($0) })
+            )
+            .disabled(state.notificationRequestPending)
+            notificationStatus
+        }
+        .padding(12)
+        .background(AquaPinstripes())
+    }
+
+    private var threadList: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
                 ForEach(threadSort.ordered(state.threads)) { thread in
                     Button {
                         var filter = state.filter
@@ -61,44 +91,46 @@ struct DashboardView: View {
                         actions.filter(filter)
                     } label: {
                         ThreadRowView(thread: thread, selected: state.filter.thread == thread.id)
-                    }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0))
-                    .listRowBackground(Color.clear)
-                }
-            }.listStyle(.sidebar).id(threadSort)
-            Button("Log folders…", systemImage: "folder.badge.plus") { state.showFolders = true }
-            Toggle(
-                "Burst reminders",
-                isOn: Binding(get: { state.notificationsEnabled }, set: { actions.notifications($0) })
-            )
-            .toggleStyle(.switch).controlSize(.small)
-            .disabled(state.notificationRequestPending)
-            if !state.notificationStatus.isEmpty {
-                Text(state.notificationStatus).font(.caption).foregroundStyle(.secondary)
-            }
-            if state.notificationNeedsSettings {
-                Button("Notification Settings…") {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
-                        NSWorkspace.shared.open(url)
-                    }
+                    }.buttonStyle(.plain)
                 }
             }
-        }.padding(14)
+            .padding(3)
+            .background(AquaScrollChrome())
+        }
+        .background(Color.white)
+        .overlay(Rectangle().strokeBorder(AquaTheme.edge, lineWidth: 1))
+        .id(threadSort)
+    }
+
+    private var notificationStatus: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(state.notificationStatus.isEmpty ? " " : state.notificationStatus)
+                .font(.caption).foregroundStyle(.secondary)
+                .lineLimit(2).frame(height: 30, alignment: .topLeading)
+            Button("Notification Settings…") {
+                if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            .opacity(state.notificationNeedsSettings ? 1 : 0)
+            .disabled(!state.notificationNeedsSettings)
+            .accessibilityHidden(!state.notificationNeedsSettings)
+        }
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Overview").font(.largeTitle.bold())
+                Text("Overview").font(.system(size: 21, weight: .bold))
+                    .shadow(color: .white, radius: 0, y: 1)
                 Spacer()
                 SyncIndicatorView(state: state)
             }
             HStack(alignment: .center, spacing: 12) {
                 HStack(spacing: 6) {
                     Text("Model").frame(width: 44, alignment: .leading)
-                    Picker(
-                        "Model",
+                    AquaPopUp(
+                        title: "Model",
                         selection: Binding(
                             get: { state.filter.model ?? "" },
                             set: { model in
@@ -106,56 +138,45 @@ struct DashboardView: View {
                                 filter.model = model.isEmpty ? nil : model
                                 filter.thread = nil
                                 actions.filter(filter)
-                            })
-                    ) {
-                        Text("All models").tag("")
-                        ForEach(state.models) { model in
-                            Text(model.id).lineLimit(1).truncationMode(.middle).tag(model.id)
-                        }
-                    }
-                    .labelsHidden()
-                    .accessibilityLabel("Model")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(width: 220, alignment: .leading)
+                            }),
+                        choices: [AquaChoice(value: "", title: "All models")]
+                            + state.models.map { AquaChoice(value: $0.id, title: $0.id) })
+                }.frame(width: 220, alignment: .leading)
                 HStack(spacing: 6) {
                     Text("Period").frame(width: 44, alignment: .leading)
-                    Picker("Period", selection: Binding(get: { period }, set: { value in applyPeriod(value) })) {
-                        Text("All time").tag(0)
-                        Text("24 hours").tag(1)
-                        Text("7 days").tag(7)
-                        Text("30 days").tag(30)
-                        if period == -1 { Text("Custom range").tag(-1) }
-                    }
-                    .labelsHidden()
-                    .accessibilityLabel("Period")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(width: 220, alignment: .leading)
+                    AquaPopUp(
+                        title: "Period", selection: Binding(get: { period }, set: { value in applyPeriod(value) }),
+                        choices: periodChoices)
+                }.frame(width: 220, alignment: .leading)
                 HStack(spacing: 8) {
                     Toggle("Sound", isOn: Binding(get: { state.soundEnabled }, set: { actions.sound($0) }))
-                        .toggleStyle(.switch).controlSize(.small)
                         .lineLimit(1).fixedSize(horizontal: true, vertical: false)
                     Button("Preview sound", systemImage: "speaker.wave.2", action: actions.previewSound)
                         .labelStyle(.iconOnly)
                         .accessibilityLabel("Preview sound")
                         .help("Preview the Ouch sound")
                         .disabled(!state.soundEnabled)
-                }
-                .frame(width: 128, alignment: .leading)
+                }.frame(width: 128, alignment: .leading)
             }
             DateRangePickerRow(from: dateBinding(isStart: true), to: dateBinding(isStart: false))
         }
+        .padding(14)
+        .background(AquaTheme.silver)
+        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AquaTheme.edge, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
-    @ViewBuilder private var status: some View {
-        if let error = state.error {
-            Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red).textSelection(.enabled)
-        }
+    private var periodChoices: [AquaChoice<Int>] {
+        var choices = [
+            AquaChoice(value: 0, title: "All time"), AquaChoice(value: 1, title: "24 hours"),
+            AquaChoice(value: 7, title: "7 days"), AquaChoice(value: 30, title: "30 days"),
+        ]
+        if period == -1 { choices.append(AquaChoice(value: -1, title: "Custom range")) }
+        return choices
     }
 
     private var metrics: some View {
-        HStack(alignment: .top, spacing: 24) {
+        HStack(alignment: .top, spacing: 10) {
             metric("Profanities", value: state.snapshot.profanityHits.formatted())
             metric("Messages", value: state.snapshot.messages.formatted())
             metric(
@@ -169,7 +190,7 @@ struct DashboardView: View {
 
     private var intensity: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Lexical intensity").font(.headline)
+            Text("Lexical intensity").font(.system(size: 14, weight: .bold))
             Text("Profanities per second · \(timelineBucketDescription) buckets")
                 .font(.caption).foregroundStyle(.secondary)
             if state.snapshot.timeline.isEmpty {
@@ -181,10 +202,13 @@ struct DashboardView: View {
             } else {
                 VStack(spacing: 0) {
                     Chart(state.snapshot.timeline) { point in
-                        BarMark(
+                        RectangleMark(
                             xStart: .value("Start", point.time), xEnd: .value("End", point.end),
-                            y: .value("Profanities/s", point.perSecond)
-                        ).foregroundStyle(Color.orange)
+                            yStart: .value("Baseline", 0), yEnd: .value("Profanities/s", point.perSecond)
+                        ).foregroundStyle(
+                            LinearGradient(
+                                colors: [Color(red: 1, green: 0.75, blue: 0.38), Color.orange],
+                                startPoint: .top, endPoint: .bottom))
                     }
                     .frame(height: 170)
                     .chartXAxis { AxisMarks(values: .automatic(desiredCount: 5)) }
@@ -317,9 +341,14 @@ struct DashboardView: View {
 
     private func metric(_ title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(value).font(.system(size: 28, weight: .semibold, design: .rounded)).monospacedDigit()
-            Text(title).font(.caption).foregroundStyle(.secondary)
-        }.frame(maxWidth: .infinity, alignment: .leading)
+            Text(value).font(.system(size: 26, weight: .medium)).monospacedDigit()
+                .foregroundStyle(Color(red: 0.15, green: 0.24, blue: 0.31))
+            Text(title).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(LinearGradient(colors: [Color(white: 0.94), .white], startPoint: .top, endPoint: .bottom))
+        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(AquaTheme.edge, lineWidth: 1))
     }
 }
 
@@ -342,6 +371,7 @@ struct DateRangePickerRow: View {
                 .labelsHidden()
                 .accessibilityLabel(title)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .datePickerStyle(.field).controlSize(.small)
         }
         .frame(width: 220, alignment: .leading)
     }
@@ -357,7 +387,13 @@ struct SyncIndicatorView: View {
                 state.isSyncing && (reduceMotion || Int(timeline.date.timeIntervalSinceReferenceDate * 2) % 2 == 0)
             HStack(spacing: 6) {
                 Circle()
-                    .fill(lit ? Color.green : Color.green.opacity(0.22))
+                    .fill(
+                        RadialGradient(
+                            colors: lit
+                                ? [.white, .green, Color(red: 0.05, green: 0.35, blue: 0.06)]
+                                : [Color(white: 0.6), Color(white: 0.3)],
+                            center: .topLeading, startRadius: 0, endRadius: 8)
+                    )
                     .frame(width: 8, height: 8)
                     .accessibilityHidden(true)
                 Text("SYNC")
@@ -369,7 +405,10 @@ struct SyncIndicatorView: View {
             .accessibilityLabel(description)
             .help(description)
         }
-        .frame(width: 52, height: 16, alignment: .leading)
+        .padding(.horizontal, 7).padding(.vertical, 4)
+        .background(Color(white: 0.85), in: RoundedRectangle(cornerRadius: 4))
+        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color(white: 0.6), lineWidth: 1))
+        .frame(width: 68, height: 26, alignment: .leading)
     }
 
     private var description: String {

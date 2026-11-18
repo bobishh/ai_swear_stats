@@ -1,0 +1,92 @@
+{
+  "formatVersion": 1,
+  "name": "Bodya",
+  "canvas": {
+    "width": 192,
+    "height": 208,
+    "footX": 96,
+    "footY": 204
+  },
+  "clips": {
+    "walk-left": {
+      "frameDuration": 0.12,
+      "frames": [
+        "walk-left/00.png",
+        "walk-left/01.png",
+        "walk-left/02.png",
+        "walk-left/03.png",
+        "walk-left/04.png",
+        "walk-left/05.png",
+        "walk-left/06.png",
+        "walk-left/07.png"
+      ]
+    },
+    "walk-right": {
+      "frameDuration": 0.12,
+      "frames": [
+        "walk-right/00.png",
+        "walk-right/01.png",
+        "walk-right/02.png",
+        "walk-right/03.png",
+        "walk-right/04.png",
+        "walk-right/05.png",
+        "walk-right/06.png",
+        "walk-right/07.png"
+      ]
+    },
+    "squat": {
+      "frameDuration": 0.12,
+      "frames": [
+        "squat/00.png",
+        "squat/01.png",
+        "squat/02.png",
+        "squat/03.png",
+        "squat/04.png",
+        "squat/05.png"
+      ]
+    },
+    "drink": {
+      "frameDuration": 0.12,
+      "frames": [
+        "drink/00.png",
+        "drink/01.png",
+        "drink/02.png",
+        "drink/03.png",
+        "drink/04.png",
+        "drink/05.png"
+      ]
+    },
+    "throw": {
+      "frameDuration": 0.12,
+      "frames": [
+        "throw/00.png",
+        "throw/01.png",
+        "throw/02.png",
+        "throw/03.png",
+        "throw/04.png",
+        "throw/05.png"
+      ],
+      "releaseFrame": 3
+    },
+    "rowdy": {
+      "frameDuration": 0.12,
+      "frames": [
+        "rowdy/00.png",
+        "rowdy/01.png",
+        "rowdy/02.png",
+        "rowdy/03.png",
+        "rowdy/04.png",
+        "rowdy/05.png"
+      ]
+    },
+    "sleep": {
+      "frameDuration": 0.5,
+      "frames": [
+        "sleep/00.png",
+        "sleep/01.png",
+        "sleep/02.png",
+        "sleep/03.png"
+      ]
+    }
+  }
+}

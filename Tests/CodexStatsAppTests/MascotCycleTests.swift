@@ -5,154 +5,144 @@ import Testing
 struct MascotCycleTests {
     private let start = Date(timeIntervalSince1970: 1_000)
 
-    @Test("Given queued bottles, when Bro wakes, then he drinks them, sleeps again, and later sobers")
-    func queuedDrinksAndSecondSleep() {
+    @Test("Given a sleeping mascot with a stash, when he wakes, then only the next bottle is consumed")
+    func queuedDrinksAtWake() {
         var cycle = MascotCycle(now: start)
-        cycle.receive(hits: 12, at: start)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(11)).phase == .sleeping)
-        cycle.receive(hits: 2, at: start.addingTimeInterval(11))
-        cycle.receive(hits: 9, at: start.addingTimeInterval(12))
-        let wake = cycle.snapshot(at: start.addingTimeInterval(50))
+        cycle.receive(hits: 40, at: start)
+        let asleep = cycle.snapshot(at: start.addingTimeInterval(100))
+        #expect(asleep.phase == .sleeping)
+        cycle.receive(hits: 11, at: start.addingTimeInterval(100))
+        let wakeDate = asleep.phaseStartedAt.addingTimeInterval(MascotCycle.Timing.sleepDuration + 0.01)
+        let wake = cycle.snapshot(at: wakeDate)
         #expect(wake.phase == .drinking)
-        #expect(wake.bottleCount == 0)
-        #expect(wake.emptyBottles == 23)
-        #expect(wake.totalDrunk == 23)
-        #expect(wake.totalReceived == 23)
-        let secondSleep = cycle.snapshot(at: start.addingTimeInterval(60))
-        #expect(secondSleep.phase == .sleeping)
-        #expect(abs(secondSleep.heat - 18.08) < 0.000_001)
-        let sober = cycle.snapshot(at: start.addingTimeInterval(141))
-        #expect(sober.phase == .buzzing)
-        #expect(abs(sober.heat - 10.16) < 0.000_001)
-        #expect(sober.totalReceived == sober.totalDrunk + sober.bottleCount)
+        #expect(wake.totalDrunk == asleep.totalDrunk + 1)
+        #expect(wake.bottleCount == asleep.bottleCount + 10)
+        #expect(wake.totalReceived == wake.totalDrunk + wake.bottleCount)
     }
 
-    @Test("Given low frequency drinks, when heat leaves rowdy range, then Bro sobers without scheduling sleep")
+    @Test("Given five queued drinks, when they finish and input stops, then Bro gradually sobers")
     func coolingAndSoberPhase() {
         var cycle = MascotCycle(now: start)
         cycle.receive(hits: 5, at: start)
-        #expect(cycle.snapshot(at: start).phase == .buzzing)
-        let sober = cycle.snapshot(at: start.addingTimeInterval(6))
-        #expect(sober.heat == 4.76)
-        #expect(sober.phase == .buzzing)
+        #expect(cycle.snapshot(at: start).phase == .drinking)
+        #expect(cycle.snapshot(at: start.addingTimeInterval(25)).phase == .buzzing)
         #expect(cycle.snapshot(at: start.addingTimeInterval(80)).phase == .sobering)
         #expect(cycle.snapshot(at: start.addingTimeInterval(130)).phase == .settled)
     }
 
-    @Test("Given one fresh hit, when time advances, then Bro stays visible for about 25 seconds")
+    @Test("Given one fresh hit, when time advances, then heat remains visible for about 25 seconds")
     func oneHitRemainsVisibleForHumanScaleWindow() {
         var cycle = MascotCycle(now: start)
         cycle.receive(hits: 1, at: start)
-
         #expect(cycle.snapshot(at: start.addingTimeInterval(24)).heat > 0)
         #expect(cycle.snapshot(at: start.addingTimeInterval(26)).heat == 0)
     }
 
-    @Test("Given four fresh hits, when Bro cools, then rowdy state persists at 30 seconds and settles after 50")
-    func fourHitsCoolOverHumanScaleWindow() {
+    @Test("Given five consumed bottles, when heat cools, then rowdy hysteresis keeps the recovery readable")
+    func rowdyCoolingHasHysteresis() {
         var cycle = MascotCycle(now: start)
-        cycle.receive(hits: 4, at: start)
-
+        cycle.receive(hits: 5, at: start)
         #expect(cycle.snapshot(at: start.addingTimeInterval(30)).phase == .buzzing)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(51)).phase == .sobering)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(101)).phase == .settled)
-    }
-
-    @Test("Given rowdy entry, when hits stop, then buildup precedes sleep and sleep lasts about 40 seconds")
-    func buildupAndSleepHaveReadableDurations() {
-        var cycle = MascotCycle(now: start)
-        cycle.receive(hits: 12, at: start)
-
-        #expect(cycle.snapshot(at: start.addingTimeInterval(9)).phase == .buzzing)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(11)).phase == .sleeping)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(49)).phase == .sleeping)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(50)).phase == .buzzing)
-    }
-
-    @Test("Given an active fresh-drink scene, when another batch arrives, then the scene anchor stays fixed")
-    func activeDrinkSceneDoesNotRestart() {
-        var cycle = MascotCycle(now: start)
-        cycle.receive(hits: 2, at: start)
-        cycle.receive(hits: 3, at: start.addingTimeInterval(2))
-
-        let active = cycle.snapshot(at: start.addingTimeInterval(2))
-        #expect(active.drinkStartedAt == start)
-        #expect(active.drinkHits == 5)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(4.7)).drinkStartedAt == start)
-        cycle.receive(hits: 1, at: start.addingTimeInterval(4.9))
-        #expect(cycle.snapshot(at: start.addingTimeInterval(4.9)).drinkStartedAt == start.addingTimeInterval(4.9))
-    }
-
-    @Test("Given a large batch, when Bro drinks it, then all hits count exactly and rowdy heat caps")
-    func largeBatchCountsExactly() {
-        var cycle = MascotCycle(now: start)
-        cycle.receive(hits: 40, at: start)
-        let snapshot = cycle.snapshot(at: start)
-        #expect(snapshot.phase == .buzzing)
-        #expect(snapshot.totalDrunk == 40)
-        #expect(snapshot.totalReceived == 40)
-        #expect(snapshot.heat == 24)
-        #expect(snapshot.drinkHits == 40)
-        let asleep = cycle.snapshot(at: start.addingTimeInterval(11))
-        #expect(asleep.phase == .sleeping)
+        #expect(cycle.snapshot(at: start.addingTimeInterval(76)).phase == .sobering)
+        #expect(cycle.snapshot(at: start.addingTimeInterval(126)).phase == .settled)
     }
 
     @Test(
-        "Given sleep and drinking boundaries, when events arrive around them, then projections stay pure and dates clamp backward"
+        "Given sustained queued drinks, when heat reaches sleep threshold, then the throw finishes before buildup and sleep"
+    )
+    func buildupAndSleepHaveReadableDurations() {
+        var cycle = MascotCycle(now: start)
+        cycle.receive(hits: 40, at: start)
+        let asleep = cycle.snapshot(at: start.addingTimeInterval(100))
+        let sleepDate = asleep.phaseStartedAt
+        #expect(asleep.phase == .sleeping)
+        #expect(cycle.snapshot(at: sleepDate.addingTimeInterval(-1)).phase == .buzzing)
+        #expect(cycle.snapshot(at: sleepDate.addingTimeInterval(-11)).phase == .drinking)
+        #expect(cycle.snapshot(at: sleepDate.addingTimeInterval(39)).phase == .sleeping)
+        #expect(cycle.snapshot(at: sleepDate.addingTimeInterval(40.01)).phase == .drinking)
+    }
+
+    @Test(
+        "Given a large batch, when time advances through repeated sleeps, then every bottle is eventually consumed exactly once"
+    )
+    func largeBatchCountsExactly() {
+        var cycle = MascotCycle(now: start)
+        cycle.receive(hits: 40, at: start)
+        let first = cycle.snapshot(at: start)
+        #expect(first.totalDrunk == 1)
+        #expect(first.bottleCount == 39)
+        #expect(first.heat == 1)
+        let final = cycle.snapshot(at: start.addingTimeInterval(10_000))
+        #expect(final.totalReceived == 40)
+        #expect(final.totalDrunk == 40)
+        #expect(final.bottleCount == 0)
+        #expect(final.phase == .settled)
+        for seconds in stride(from: 0.0, through: 1_000.0, by: 5) {
+            let snapshot = cycle.snapshot(at: start.addingTimeInterval(seconds))
+            #expect(snapshot.heat >= 0 && snapshot.heat <= 24)
+            #expect(snapshot.totalReceived == snapshot.totalDrunk + snapshot.bottleCount)
+        }
+    }
+
+    @Test(
+        "Given backward events and repeated projections, when snapshots are queried, then time clamps and retained state stays pure"
     )
     func boundariesAndPureProjection() {
         var cycle = MascotCycle(now: start)
-        cycle.receive(hits: 12, at: start)
-        cycle.receive(hits: 4, at: start.addingTimeInterval(3.9))
-        let sleep = cycle.snapshot(at: start.addingTimeInterval(10))
-        #expect(sleep.phase == .sleeping)
-        #expect(sleep.bottleCount == 0)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(10)) == sleep)
-        cycle.receive(hits: 1, at: start.addingTimeInterval(10))
-        cycle.receive(hits: 2, at: start.addingTimeInterval(9))
-        let backward = cycle.snapshot(at: start.addingTimeInterval(9))
+        cycle.receive(hits: 40, at: start)
+        let date = start.addingTimeInterval(100)
+        let asleep = cycle.snapshot(at: date)
+        #expect(cycle.snapshot(at: date) == asleep)
+        #expect(cycle.totalDrunk == 1)
+        cycle.receive(hits: 1, at: date)
+        cycle.receive(hits: 2, at: date.addingTimeInterval(-1))
+        let backward = cycle.snapshot(at: date.addingTimeInterval(-1))
         #expect(backward.phase == .sleeping)
-        #expect(backward.bottleCount == 3)
-        #expect(backward.totalReceived == 19)
-        #expect(backward.totalReceived == backward.totalDrunk + backward.bottleCount)
+        #expect(backward.bottleCount == asleep.bottleCount + 3)
+        #expect(backward.totalReceived == 43)
     }
 
-    @Test("Given queued bottles at wake, when drinking phase is active, then fresh hits are drunk immediately")
+    @Test("Given an active wake-up drink, when new hits arrive, then they append without restarting that drink")
     func freshHitDuringWakeDrink() {
         var cycle = MascotCycle(now: start)
-        cycle.receive(hits: 12, at: start)
-        cycle.receive(hits: 2, at: start.addingTimeInterval(11))
-        let waking = start.addingTimeInterval(50)
-        #expect(cycle.snapshot(at: waking).phase == .drinking)
-        cycle.receive(hits: 1, at: waking.addingTimeInterval(1))
-        let afterHit = cycle.snapshot(at: waking.addingTimeInterval(1))
-        #expect(afterHit.phase == .drinking)
-        #expect(afterHit.bottleCount == 0)
-        #expect(afterHit.totalDrunk == 15)
-        #expect(afterHit.totalReceived == 15)
-        #expect(afterHit.phaseStartedAt == waking)
+        cycle.receive(hits: 40, at: start)
+        let asleep = cycle.snapshot(at: start.addingTimeInterval(100))
+        let waking = asleep.phaseStartedAt.addingTimeInterval(40.01)
+        let before = cycle.snapshot(at: waking)
+        cycle.receive(hits: 2, at: waking.addingTimeInterval(1))
+        let after = cycle.snapshot(at: waking.addingTimeInterval(1))
+        #expect(after.phase == .drinking)
+        #expect(after.totalDrunk == before.totalDrunk)
+        #expect(after.bottleCount == before.bottleCount + 2)
+        #expect(after.drinkStartedAt == before.drinkStartedAt)
     }
 
-    @Test("Given no queued bottles, when sleep cools below rowdy level, then wake stays finite and sobers")
+    @Test("Given no remaining stash, when sleep finishes, then Bro wakes without manufacturing another bottle")
     func emptyWakeDoesNotLoop() {
         var cycle = MascotCycle(now: start)
-        cycle.receive(hits: 12, at: start)
-        let wake = cycle.snapshot(at: start.addingTimeInterval(50))
+        cycle.receive(hits: 15, at: start)
+        let asleep = cycle.snapshot(at: start.addingTimeInterval(100))
+        #expect(asleep.phase == .sleeping)
+        #expect(asleep.bottleCount == 0)
+        let wake = cycle.snapshot(at: asleep.phaseStartedAt.addingTimeInterval(40.01))
         #expect(wake.phase == .buzzing)
-        #expect(abs(wake.heat - 7.6) < 0.000_001)
-        #expect(wake.bottleCount == 0)
-        #expect(wake.totalReceived == 12)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(250)).phase == .settled)
+        #expect(wake.totalDrunk == 15)
+        #expect(cycle.snapshot(at: start.addingTimeInterval(400)).phase == .settled)
     }
 
-    @Test("Given rowdy heat and no queued bottles, when Bro wakes, then he sleeps again until heat drops")
-    func emptyRowdyWakeSleepsAgain() {
-        var cycle = MascotCycle(now: start)
-        cycle.receive(hits: 24, at: start)
-        let firstWake = start.addingTimeInterval(50)
-        #expect(cycle.snapshot(at: firstWake).phase == .sleeping)
-        #expect(cycle.snapshot(at: firstWake).heat > 12)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(130)).phase == .buzzing)
-        #expect(cycle.snapshot(at: start.addingTimeInterval(400)).phase == .sobering)
+    @Test(
+        "Given identical simultaneous input split across batches, when projected, then accounting and current drink agree"
+    )
+    func batchingDoesNotChangeQueue() {
+        var coalesced = MascotCycle(now: start)
+        var split = MascotCycle(now: start)
+        coalesced.receive(hits: 25, at: start)
+        split.receive(hits: 5, at: start)
+        split.receive(hits: 20, at: start)
+        for seconds in [0.0, 2.0, 15.0, 100.0, 150.0, 500.0] {
+            #expect(
+                coalesced.snapshot(at: start.addingTimeInterval(seconds))
+                    == split.snapshot(at: start.addingTimeInterval(seconds)))
+        }
     }
 }

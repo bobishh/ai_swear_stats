@@ -16,7 +16,8 @@ struct ChartMascotView: View {
                     at: timeline.date,
                     availableWidth: geometry.size.width,
                     patrolDate: patrolDate,
-                    reduceMotion: reduceMotion)
+                    reduceMotion: reduceMotion,
+                    appearance: state.mascotLook.appearance)
                 ZStack(alignment: .topLeading) {
                     if showsFloor { floor }
                     bottleStacks(
@@ -31,11 +32,10 @@ struct ChartMascotView: View {
                         patrolDate: patrolDate,
                         width: geometry.size.width,
                         reduceMotion: reduceMotion)
-                    if let image = ChartMascotImages.image(pose: frame.pose, index: frame.frameIndex) {
+                    if let image = state.mascotLook.image(pose: frame.pose, index: frame.frameIndex) {
                         Image(nsImage: image)
                             .resizable()
                             .interpolation(.none)
-                            .scaleEffect(x: frame.pose == .throwBottle ? -1 : 1, y: 1)
                             .frame(
                                 width: ChartMascotMotion.spriteWidth * frame.scale,
                                 height: ChartMascotMotion.spriteHeight * frame.scale
@@ -68,7 +68,8 @@ struct ChartMascotView: View {
     ) -> some View {
         let queued = ChartMascotMotion.queuedBottlePositions(count: snapshot.bottleCount, availableWidth: width)
         let emptyCount = ChartMascotMotion.visibleEmptyBottleCount(
-            snapshot: snapshot, at: date, availableWidth: width, patrolDate: patrolDate, reduceMotion: reduceMotion)
+            snapshot: snapshot, at: date, availableWidth: width, patrolDate: patrolDate, reduceMotion: reduceMotion,
+            appearance: state.mascotLook.appearance)
         let empties = ChartMascotMotion.emptyBottlePositions(count: emptyCount, availableWidth: width)
         return Canvas { context, _ in
             for (index, position) in queued.enumerated() {
@@ -96,7 +97,8 @@ struct ChartMascotView: View {
         reduceMotion: Bool
     ) -> some View {
         let projectiles = ChartMascotMotion.thrownBottlePositions(
-            snapshot: snapshot, at: date, availableWidth: width, patrolDate: patrolDate, reduceMotion: reduceMotion)
+            snapshot: snapshot, at: date, availableWidth: width, patrolDate: patrolDate, reduceMotion: reduceMotion,
+            appearance: state.mascotLook.appearance)
         return Canvas { context, _ in
             for (index, position) in projectiles.enumerated() {
                 drawBottle(in: context, at: position, color: bottleColor(index))
@@ -141,46 +143,9 @@ struct ChartMascotView: View {
 
 @MainActor
 enum ChartMascotImages {
-    private static let walkLeft = load("walk-left", count: 8)
-    private static let walkRight = load("walk-right", count: 8)
-    private static let squat = load("squat", count: 6)
-    private static let drink = load("drink", count: 6)
-    private static let sleep = load("sleep", count: 4)
-    private static let throwBottle = load("throw", count: 6)
-    private static let rowdy = load("rowdy", count: 6)
-
-    static var hasAllFrames: Bool {
-        hasFrames(walkLeft, count: 8) && hasFrames(walkRight, count: 8)
-            && hasFrames(squat, count: 6) && hasFrames(drink, count: 6) && hasFrames(sleep, count: 4)
-            && hasFrames(throwBottle, count: 6) && hasFrames(rowdy, count: 6)
-    }
+    static var hasAllFrames: Bool { MascotLook.builtIn.isComplete }
 
     static func image(pose: ChartMascotMotion.Pose, index: Int) -> NSImage? {
-        let frames: [NSImage?]
-        switch pose {
-        case .walkLeft: frames = walkLeft
-        case .walkRight: frames = walkRight
-        case .squat: frames = squat
-        case .drink: frames = drink
-        case .throwBottle: frames = throwBottle
-        case .rowdy: frames = rowdy
-        case .sleep: frames = sleep
-        }
-        guard frames.indices.contains(index) else { return nil }
-        return frames[index]
-    }
-
-    private static func load(_ action: String, count: Int) -> [NSImage?] {
-        (0..<count).map { index in
-            AppResources.image(named: String(format: "%02d", index), subdirectory: "Mascot/\(action)")
-        }
-    }
-
-    private static func hasFrames(_ frames: [NSImage?], count: Int) -> Bool {
-        frames.count == count
-            && frames.allSatisfy { image in
-                guard let image else { return false }
-                return image.size.width > 0 && image.size.height > 0
-            }
+        MascotLook.builtIn.image(pose: pose, index: index)
     }
 }
