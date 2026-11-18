@@ -47,6 +47,18 @@ struct MascotCycleTests {
         #expect(cycle.snapshot(at: start.addingTimeInterval(126)).phase == .settled)
     }
 
+    @Test("Given rowdy recovery, when another bottle interrupts it, then the drink does not erase rowdy hysteresis")
+    func freshDrinkPreservesRowdyRecovery() {
+        var cycle = MascotCycle(now: start)
+        cycle.receive(hits: 5, at: start)
+        #expect(cycle.snapshot(at: start.addingTimeInterval(70)).phase == .buzzing)
+        cycle.receive(hits: 1, at: start.addingTimeInterval(70))
+        let afterDrink = cycle.snapshot(at: start.addingTimeInterval(76))
+        #expect(afterDrink.heat < 4 && afterDrink.heat >= 2)
+        #expect(afterDrink.phase == .buzzing)
+        #expect(cycle.snapshot(at: start.addingTimeInterval(101)).phase == .sobering)
+    }
+
     @Test(
         "Given sustained queued drinks, when heat reaches sleep threshold, then the throw finishes before buildup and sleep"
     )

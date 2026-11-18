@@ -37,6 +37,7 @@ struct MascotCycle: Equatable, Sendable {
     private var lastAdvancedAt: Date
     private var sleepDueAt: Date?
     private var drinkEndsAt: Date?
+    private var rowdy = false
 
     private static let buzzThreshold = 4.0
     private static let sleepThreshold = 12.0
@@ -73,7 +74,9 @@ struct MascotCycle: Equatable, Sendable {
         bottleCount -= 1
         totalDrunk += 1
         emptyBottles += 1
+        if heat < 2 { rowdy = false }
         heat = min(Self.maximumHeat, heat + 1)
+        if heat >= Self.buzzThreshold { rowdy = true }
         drinkStartedAt = date
         drinkHits = 1
         drinkEndsAt = date.addingTimeInterval(Timing.freshDrinkSceneDuration)
@@ -140,12 +143,15 @@ struct MascotCycle: Equatable, Sendable {
 
     private mutating func setAwakePhase(at date: Date) {
         if heat == 0 {
+            rowdy = false
             emptyBottles = 0
             sleepDueAt = nil
             setPhase(.settled, at: date)
-        } else if heat >= Self.buzzThreshold || (phase == .buzzing && heat >= 2) {
+        } else if heat >= Self.buzzThreshold || (rowdy && heat >= 2) {
+            rowdy = true
             setPhase(.buzzing, at: date)
         } else {
+            rowdy = false
             setPhase(.sobering, at: date)
         }
     }
